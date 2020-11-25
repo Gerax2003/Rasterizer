@@ -37,4 +37,4 @@ float4 operator*(const mat4x4& m, float4 v);
 mat4x4 operator*(const mat4x4& a, const mat4x4& b);
 float3 operator/(float3 v, float a);
 float3 operator-(float3 v);
-
+float4 operator*(float4 v, float a);

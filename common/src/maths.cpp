@@ -35,6 +35,11 @@ float3 operator-(float3 v)
 	return { -v.x, -v.y, -v.z };
 }
 
+float4 operator*(float4 v, float a)
+{
+	return { v.x * a, v.y * a, v.z * a, v.w * a };
+}
+
 mat4x4 mat4::frustum(float left, float right, float bottom, float top, float near, float far)
 {
 	return {

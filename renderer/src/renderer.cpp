@@ -179,7 +179,17 @@ bool checkBaryCoords(float3 baryCoords)
         return false;
 }
 
-void fillTriangle(const Framebuffer& fb, float3* points, float4* colors)
+Varying getVariables(Varying* variables, float3 baryCoords)
+{
+    Varying retVars = {};
+    float4 colors[3] = { variables[0].color, variables[1].color, variables[2].color };
+    float4 pixelColor = getColor(colors, baryCoords);
+
+    retVars.color = pixelColor * variables[0].light;
+    return retVars;
+}
+
+void fillTriangle(const Framebuffer& fb, float3* points, Varying* variables)
 {
     float4 box = getBoundingBox(points);
     
@@ -192,8 +202,8 @@ void fillTriangle(const Framebuffer& fb, float3* points, float4* colors)
 
             if (checkBaryCoords(baryCoords) && depthTest(pixel, fb))
             {
-                float4 pixelColor = getColor(colors, baryCoords);
-                drawPixel(fb.colorBuffer, fb.width, fb.height, x, y, pixelColor);
+                Varying pixelVariables = getVariables(variables, baryCoords);
+                drawPixel(fb.colorBuffer, fb.width, fb.height, x, y, pixelVariables.color);
             }
         }
 }
@@ -235,18 +245,13 @@ float4 vertexShader(mat4x4 modelViewProj, rdrVertex vertex, Varying& variables)
 
 void drawTriangle(rdrImpl* renderer, mat4x4 modelViewProj, rdrVertex* vertices)
 {
-    // Store triangle vertices positions, 3D locale
-    float3 localCoords[3] = {
-        { vertices[0].x, vertices[0].y, vertices[0].z },
-        { vertices[1].x, vertices[1].y, vertices[1].z },
-        { vertices[2].x, vertices[2].y, vertices[2].z },
-    };
+    Varying variables[3] = { {}, {}, {} };
 
     // Local space (v3) -> Clip space (v4), 4d (perspective)
     float4 clipCoords[3] = {
-        { modelViewProj * float4{ localCoords[0], 1.f } },
-        { modelViewProj * float4{ localCoords[1], 1.f } },
-        { modelViewProj * float4{ localCoords[2], 1.f } },
+        { vertexShader(modelViewProj, vertices[0], variables[0]) },
+        { vertexShader(modelViewProj, vertices[1], variables[1]) },
+        { vertexShader(modelViewProj, vertices[2], variables[2]) },
     };
 
     if (isOutside(clipCoords[0]) || isOutside(clipCoords[1]) || isOutside(clipCoords[2]))
@@ -268,12 +273,6 @@ void drawTriangle(rdrImpl* renderer, mat4x4 modelViewProj, rdrVertex* vertices)
         { ndcToScreenCoords(ndcCoords[2], renderer->viewport) },
     };
 
-    float4 colors[3] = {
-        { vertices[0].r, vertices[0].g, vertices[0].b, vertices[0].a },
-        { vertices[1].r, vertices[1].g, vertices[1].b, vertices[1].a },
-        { vertices[2].r, vertices[2].g, vertices[2].b, vertices[2].a }
-    };
-
     /*
     // Wireframe
     drawLine(renderer->fb, screenCoords[0], screenCoords[1], renderer->lineColor);
@@ -281,7 +280,7 @@ void drawTriangle(rdrImpl* renderer, mat4x4 modelViewProj, rdrVertex* vertices)
     drawLine(renderer->fb, screenCoords[2], screenCoords[0], renderer->lineColor);*/
 
     // Rasterize
-    fillTriangle(renderer->fb, screenCoords, colors);
+    fillTriangle(renderer->fb, screenCoords, variables);
 }
 
 void rdrDrawTriangles(rdrImpl* renderer, rdrVertex* vertices, int count)
