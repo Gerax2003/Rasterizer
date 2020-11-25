@@ -54,8 +54,6 @@ void rdrSetTexture(rdrImpl* renderer, float* colors32Bits, int width, int height
     // TODO
 }
 
-
-
 void drawPixel(float4* colorBuffer, int width, int height, int x, int y, float4 color)
 {
     if (x < 0 || x >= width || y < 0 || y >= height)
@@ -160,11 +158,22 @@ float4 getColor(float4* colors, float3 baryCoords)
 bool depthTest(float3 point, Framebuffer buffer)
 {
     if (point.x < 0 || point.x >= buffer.width || point.y < 0 || point.y >= buffer.height)
-        return;
+        return false;
 
     int index = point.x + (point.y * buffer.width);
 
     if (point.z > buffer.depthBuffer[index])
+    {
+        buffer.depthBuffer[index] = point.z;
+        return true;
+    }
+    else
+        return false;
+}
+
+bool checkBaryCoords(float3 baryCoords)
+{
+    if (baryCoords.x >= 0 && baryCoords.y >= 0 && baryCoords.z >= 0 && baryCoords.x <= 1 && baryCoords.y <= 1 && baryCoords.z <= 1)
         return true;
     else
         return false;
@@ -173,29 +182,20 @@ bool depthTest(float3 point, Framebuffer buffer)
 void fillTriangle(const Framebuffer& fb, float3* points, float4* colors)
 {
     float4 box = getBoundingBox(points);
-
-    // box.e[2] = width, box.e[3] = height
-    /* Bounding box display
-    drawLine(fb, { box.x, box.y }, { box.x + box.e[2], box.y }, colors[0]);
-    drawLine(fb, { box.x + box.e[2], box.y }, { box.x + box.e[2], box.y + box.e[3] }, colors[0]);
-    drawLine(fb, { box.x + box.e[2], box.y + box.e[3] }, { box.x, box.y + box.e[3] }, colors[0]);
-    drawLine(fb, { box.x, box.y + box.e[3] }, { box.x, box.y }, colors[0]);*/
     
     for (int x = (int)box.x; x <= (int)box.x + (int)box.e[2]; x++)
-    {
         for (int y = (int)box.y; y >= (int)box.y + (int)box.e[3]; y--)
         {
             float3 pixel = { x, y, 0 };
             float3 baryCoords = getBarycentricCoordinates(points, pixel);
             pixel.z = baryCoords.x * points[0].z + baryCoords.y * points[1].z + baryCoords.z * points[2].z;
 
-            if (baryCoords.x >= 0 && baryCoords.y >= 0 && baryCoords.z >= 0 && baryCoords.x <= 1 && baryCoords.y <= 1 && baryCoords.z <= 1 && depthTest(pixel, fb))
+            if (checkBaryCoords(baryCoords) && depthTest(pixel, fb))
             {
-                float4 pixelColor = getColor(colors, baryCoords); //{ 1.f, 0.2f, 0.f, 1.f };
+                float4 pixelColor = getColor(colors, baryCoords);
                 drawPixel(fb.colorBuffer, fb.width, fb.height, x, y, pixelColor);
             }
         }
-    }
 }
 
 float3 ndcToScreenCoords(float3 ndc, const Viewport& viewport)
@@ -204,7 +204,7 @@ float3 ndcToScreenCoords(float3 ndc, const Viewport& viewport)
     {
         viewport.x + (ndc.x +1.f) * (viewport.width) / 2.f,
         viewport.y + (-ndc.y + 1.f) * (viewport.height) / 2.f,
-        (ndc.z + 1.f) / 2
+        (-ndc.z + 1.f) / 2
     };
 }
 
@@ -216,12 +216,21 @@ float3 clipToNdcCoords(float4 clip)
 
 bool isOutside(const float4& vertice)
 {
-    if ((vertice.x < -vertice.w || vertice.x > vertice.w) &&
-        (vertice.y < -vertice.w || vertice.y > vertice.w) &&
+    if ((vertice.x < -vertice.w || vertice.x > vertice.w) ||
+        (vertice.y < -vertice.w || vertice.y > vertice.w) ||
         (vertice.z < -vertice.w || vertice.z > vertice.w) && vertice.w < 0)
         return true;
     else
         return false;
+}
+
+float4 vertexShader(mat4x4 modelViewProj, rdrVertex vertex, Varying& variables)
+{
+    float3 localCoords = { vertex.x, vertex.y, vertex.z };
+
+    variables = { 1.f, vertex.u, vertex.v, {vertex.nx, vertex.ny, vertex.nz}, {vertex.r, vertex.g, vertex.b, vertex.a} };
+
+    return { modelViewProj * float4{localCoords, 1.f} };
 }
 
 void drawTriangle(rdrImpl* renderer, mat4x4 modelViewProj, rdrVertex* vertices)
@@ -265,12 +274,13 @@ void drawTriangle(rdrImpl* renderer, mat4x4 modelViewProj, rdrVertex* vertices)
         { vertices[2].r, vertices[2].g, vertices[2].b, vertices[2].a }
     };
 
-    // Rasterize
     /*
+    // Wireframe
     drawLine(renderer->fb, screenCoords[0], screenCoords[1], renderer->lineColor);
     drawLine(renderer->fb, screenCoords[1], screenCoords[2], renderer->lineColor);
     drawLine(renderer->fb, screenCoords[2], screenCoords[0], renderer->lineColor);*/
 
+    // Rasterize
     fillTriangle(renderer->fb, screenCoords, colors);
 }
 

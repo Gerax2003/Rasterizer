@@ -31,3 +31,12 @@ struct rdrImpl
 
     float4 lineColor = { 1.f, 1.f, 1.f, 1.f };
 };
+
+struct Varying
+{
+    float light;
+    float u;
+    float v;
+    float3 norms;
+    float4 color;
+};
