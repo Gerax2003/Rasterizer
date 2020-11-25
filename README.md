@@ -14,6 +14,8 @@ Translation and rotation functions (X & Y axis)
 Texture rendering using UV coords  
 Lighting  
 Optimisation and proper clipping  
+Vertex shader  
+
 
 ## Resources
 ---
