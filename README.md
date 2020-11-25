@@ -24,8 +24,4 @@ Vertex shader for textures and lightning
 Wikipedia links:  
 -[Viewing frustum](https://en.wikipedia.org/wiki/Viewing_frustum#/media/File:ViewFrustum.svg)  
 -[Barycentric coordinates](https://en.wikipedia.org/wiki/Barycentric_coordinate_system#Relationship_with_Cartesian_or_affine_coordinates)  
--[Projection matrix](https://en.wikipedia.org/wiki/Projection_matrix)
-
-**Assets:**  
--[Monster](https://www.thingiverse.com/thing:3329878)  
--[Boat and siege machine](https://kenney.nl/assets?q=3d)  
+-[Projection matrix](https://en.wikipedia.org/wiki/Projection_matrix)  
