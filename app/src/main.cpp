@@ -166,8 +166,12 @@ int main(int argc, char* argv[])
         {
             inputs.deltaX = mouseDeltaX;
             inputs.deltaY = mouseDeltaY;
-            inputs.moveForward  = ImGui::IsKeyDown(GLFW_KEY_UP);
-            inputs.moveBackward = ImGui::IsKeyDown(GLFW_KEY_DOWN);
+            inputs.moveForward  = ImGui::IsKeyDown(GLFW_KEY_UP) || ImGui::IsKeyDown(GLFW_KEY_Z);
+            inputs.moveBackward = ImGui::IsKeyDown(GLFW_KEY_DOWN) || ImGui::IsKeyDown(GLFW_KEY_S);
+            inputs.moveLeft     = ImGui::IsKeyDown(GLFW_KEY_LEFT) || ImGui::IsKeyDown(GLFW_KEY_Q);
+            inputs.moveRight    = ImGui::IsKeyDown(GLFW_KEY_RIGHT) || ImGui::IsKeyDown(GLFW_KEY_S);
+            inputs.moveUpwards  = ImGui::IsKeyDown(GLFW_KEY_SPACE);
+            inputs.moveDownwards = ImGui::IsKeyDown(GLFW_KEY_LEFT_SHIFT);
             camera.update(ImGui::GetIO().DeltaTime, inputs);
         }
 

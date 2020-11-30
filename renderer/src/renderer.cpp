@@ -51,7 +51,9 @@ void rdrSetViewport(rdrImpl* renderer, int x, int y, int width, int height)
 
 void rdrSetTexture(rdrImpl* renderer, float* colors32Bits, int width, int height)
 {
-    // TODO
+    renderer->texture   = colors32Bits;
+    renderer->texWidth  = width;
+    renderer->texHeight = height;
 }
 
 void drawPixel(float4* colorBuffer, int width, int height, int x, int y, float4 color)
@@ -83,7 +85,7 @@ void drawLine(const Framebuffer& fb, float3 p0, float3 p1, float4 color)
     drawLine(fb.colorBuffer, fb.width, fb.height, (int)roundf(p0.x), (int)roundf(p0.y), (int)roundf(p1.x), (int)roundf(p1.y), color);
 }
 
-float3 getBarycentricCoordinates(float3* points, float3 point)
+float3 getBarycentricCoordinates(float4* points, float3 point)
 {
     float lambda0 = ((points[1].y - points[2].y) * (point.x - points[2].x) + (points[2].x - points[1].x) * (point.y - points[2].y)) / ((points[1].y - points[2].y) * (points[0].x - points[2].x) + (points[2].x - points[1].x) * (points[0].y - points[2].y));
     float lambda1 = ((points[2].y - points[0].y) * (point.x - points[2].x) + (points[0].x - points[2].x) * (point.y - points[2].y)) / ((points[1].y - points[2].y) * (points[0].x - points[2].x) + (points[2].x - points[1].x) * (points[0].y - points[2].y));
@@ -92,7 +94,7 @@ float3 getBarycentricCoordinates(float3* points, float3 point)
     return { lambda0, lambda1, lambda2 };
 }
 
-int getLeftPoint(float3* points)
+int getLeftPoint(float4* points)
 {
     int retNum = INT_MAX;
     for (int i = 0; i < 3; i++)
@@ -102,7 +104,7 @@ int getLeftPoint(float3* points)
     return retNum;
 }
 
-int getRightPoint(float3* points)
+int getRightPoint(float4* points)
 {
     int retNum = INT_MIN;
     for (int i = 0; i < 3; i++)
@@ -112,7 +114,7 @@ int getRightPoint(float3* points)
     return retNum;
 }
 
-int getTopPoint(float3* points)
+int getTopPoint(float4* points)
 {
     int retNum = INT_MIN;
     for (int i = 0; i < 3; i++)
@@ -122,7 +124,7 @@ int getTopPoint(float3* points)
     return retNum;
 }
 
-int getBotPoint(float3* points)
+int getBotPoint(float4* points)
 {
     int retNum = INT_MAX;
     for (int i = 0; i < 3; i++)
@@ -132,7 +134,7 @@ int getBotPoint(float3* points)
     return retNum;
 }
 
-float4 getBoundingBox(float3* points)
+float4 getBoundingBox(float4* points)
 {
     int leftPoint = getLeftPoint(points);
     int rightPoint = getRightPoint(points);
@@ -145,7 +147,7 @@ float4 getBoundingBox(float3* points)
     return retBox;
 }
 
-float4 getColor(float4* colors, float3 baryCoords)
+float4 getBaryColor(float4* colors, float3 baryCoords)
 {
     float r = baryCoords.x * colors[0].r + baryCoords.y * colors[1].r + baryCoords.z * colors[2].r;
     float g = baryCoords.x * colors[0].g + baryCoords.y * colors[1].g + baryCoords.z * colors[2].g;
@@ -155,7 +157,32 @@ float4 getColor(float4* colors, float3 baryCoords)
     return { r, g, b, a };
 }
 
-bool depthTest(float3 point, Framebuffer buffer)
+float3 getNorms(Varying* variables, float3 baryCoords)
+{
+    float nx = baryCoords.x * variables[0].norms.x + baryCoords.y * variables[1].norms.x + baryCoords.z * variables[2].norms.x;
+    float ny = baryCoords.x * variables[0].norms.y + baryCoords.y * variables[1].norms.y + baryCoords.z * variables[2].norms.y;
+    float nz = baryCoords.x * variables[0].norms.z + baryCoords.y * variables[1].norms.z + baryCoords.z * variables[2].norms.z;
+
+    return { nx, ny, nz };
+}
+
+Varying getVariables(Varying* variables, float3 baryCoords)
+{
+    Varying retVars = {};
+    float4 colors[3] = { variables[0].color, variables[1].color, variables[2].color };
+    retVars.color = getBaryColor(colors, baryCoords);
+
+    retVars.norms = getNorms(variables, baryCoords);
+    retVars.light = baryCoords.x * variables[0].light + baryCoords.y * variables[1].light + baryCoords.z * variables[2].light;
+    
+    retVars.u = baryCoords.x * variables[0].u + baryCoords.y * variables[1].u + baryCoords.z * variables[2].u;
+    retVars.v = baryCoords.x * variables[0].v + baryCoords.y * variables[1].v + baryCoords.z * variables[2].v;
+
+
+    return retVars;
+}
+
+bool depthTest(float3& point, Framebuffer& buffer)
 {
     if (point.x < 0 || point.x >= buffer.width || point.y < 0 || point.y >= buffer.height)
         return false;
@@ -171,7 +198,7 @@ bool depthTest(float3 point, Framebuffer buffer)
         return false;
 }
 
-bool checkBaryCoords(float3 baryCoords)
+bool checkBaryCoords(float3& baryCoords)
 {
     if (baryCoords.x >= 0 && baryCoords.y >= 0 && baryCoords.z >= 0 && baryCoords.x <= 1 && baryCoords.y <= 1 && baryCoords.z <= 1)
         return true;
@@ -179,17 +206,29 @@ bool checkBaryCoords(float3 baryCoords)
         return false;
 }
 
-Varying getVariables(Varying* variables, float3 baryCoords)
+float4 getColor(Varying& pixelVariables, rdrImpl* renderer)
 {
-    Varying retVars = {};
-    float4 colors[3] = { variables[0].color, variables[1].color, variables[2].color };
-    float4 pixelColor = getColor(colors, baryCoords);
+    if (renderer->texWidth <= 0 || renderer->texHeight <= 0 || renderer->texture == nullptr)
+        return pixelVariables.color * pixelVariables.light;
 
-    retVars.color = pixelColor * variables[0].light;
-    return retVars;
+    int texX = (int)(pixelVariables.u * renderer->texWidth) % renderer->texWidth;
+    int texY = renderer->texHeight - 1 - ((int)(pixelVariables.v * renderer->texHeight) % renderer->texHeight);
+
+    int index = (texY * renderer->texWidth + texX) * 4;
+
+    //printf("TexX = %i, texY = %i\n",texX, texY);
+
+    float r = pixelVariables.color.r * pixelVariables.light * renderer->texture[index + 0];
+    float g = pixelVariables.color.g * pixelVariables.light * renderer->texture[index + 1];
+    float b = pixelVariables.color.b * pixelVariables.light * renderer->texture[index + 2];
+    float a = pixelVariables.color.a * pixelVariables.light * renderer->texture[index + 3];
+
+    //printf("color = {%f, %f, %f, %f}\n", renderer->texture[index + 0], renderer->texture[index + 1], renderer->texture[index + 2], renderer->texture[index + 3]);
+
+    return { r, g, b, a };
 }
 
-void fillTriangle(const Framebuffer& fb, float3* points, Varying* variables)
+void fillTriangle(rdrImpl* renderer, float4* points, Varying* variables)
 {
     float4 box = getBoundingBox(points);
     
@@ -200,10 +239,11 @@ void fillTriangle(const Framebuffer& fb, float3* points, Varying* variables)
             float3 baryCoords = getBarycentricCoordinates(points, pixel);
             pixel.z = baryCoords.x * points[0].z + baryCoords.y * points[1].z + baryCoords.z * points[2].z;
 
-            if (checkBaryCoords(baryCoords) && depthTest(pixel, fb))
+            if (checkBaryCoords(baryCoords) && depthTest(pixel, renderer->fb))
             {
                 Varying pixelVariables = getVariables(variables, baryCoords);
-                drawPixel(fb.colorBuffer, fb.width, fb.height, x, y, pixelVariables.color);
+                float4 color = getColor(pixelVariables, renderer);
+                drawPixel(renderer->fb.colorBuffer, renderer->fb.width, renderer->fb.height, x, y, color);
             }
         }
 }
@@ -267,10 +307,10 @@ void drawTriangle(rdrImpl* renderer, mat4x4 modelViewProj, rdrVertex* vertices)
 
     // NDC (v3) to screen coords (v2) (2d, 0 à size)
     // TODO
-    float3 screenCoords[3] = {
-        { ndcToScreenCoords(ndcCoords[0], renderer->viewport) },
-        { ndcToScreenCoords(ndcCoords[1], renderer->viewport) },
-        { ndcToScreenCoords(ndcCoords[2], renderer->viewport) },
+    float4 screenCoords[3] = {
+        { ndcToScreenCoords(ndcCoords[0], renderer->viewport), clipCoords[0].w },
+        { ndcToScreenCoords(ndcCoords[1], renderer->viewport), clipCoords[1].w },
+        { ndcToScreenCoords(ndcCoords[2], renderer->viewport), clipCoords[2].w },
     };
 
     /*
@@ -280,16 +320,28 @@ void drawTriangle(rdrImpl* renderer, mat4x4 modelViewProj, rdrVertex* vertices)
     drawLine(renderer->fb, screenCoords[2], screenCoords[0], renderer->lineColor);*/
 
     // Rasterize
-    fillTriangle(renderer->fb, screenCoords, variables);
+    fillTriangle(renderer, screenCoords, variables);
 }
 
 void rdrDrawTriangles(rdrImpl* renderer, rdrVertex* vertices, int count)
 {
-    mat4x4 modelViewProj = renderer->projection * renderer->model * renderer->view;//renderer->model;  
+    mat4x4 modelViewProj = renderer->projection * renderer->model * renderer->view;
     // Transform vertex list to triangles into colorBuffer
     for (int i = 0; i < count; i += 3)
     {
         drawTriangle(renderer, modelViewProj, &vertices[i]);
+    }
+}
+
+void rdrDrawQuads(rdrImpl* renderer, rdrVertex* vertices, int vertexCount)
+{
+    mat4x4 modelViewProj = renderer->projection * renderer->model * renderer->view; 
+    // Transform vertex list to triangles into colorBuffer
+    for (int i = 0; i < vertexCount; i += 4)
+    {
+        drawTriangle(renderer, modelViewProj, &vertices[i]);
+        rdrVertex tempVertices[3] = { vertices[i + 2], vertices[i + 3], vertices[i] };
+        drawTriangle(renderer, modelViewProj, tempVertices);
     }
 }
 

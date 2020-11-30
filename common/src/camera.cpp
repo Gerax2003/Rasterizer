@@ -31,12 +31,6 @@ void Camera::update(float deltaTime, const CameraInputs& inputs)
 mat4x4 Camera::getViewMatrix()
 {
     return mat4::rotateX(pitch) * mat4::rotateY(-yaw) * mat4::translate(-position);
-    /*return {
-        1.f,0.f,0.f,0.f,
-        0.f,1.f,0.f,0.f,
-        0.f,0.f,1.f,0.f,
-        position.x,position.y,position.z,1.f
-    };*/
     //return mat4::identity();
 }
 

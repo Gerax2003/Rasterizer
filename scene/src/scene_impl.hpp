@@ -18,5 +18,7 @@ private:
     double time = 0.0;
     std::vector<rdrVertex> vertices;
     float* texture;
+    int width;
+    int height;
     float scale = 1.f;
 };

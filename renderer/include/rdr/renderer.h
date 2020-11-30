@@ -41,6 +41,7 @@ RDR_API void rdrSetTexture(rdrImpl* renderer, float* colors32Bits, int width, in
 
 // Draw a list of triangles
 RDR_API void rdrDrawTriangles(rdrImpl* renderer, rdrVertex* vertices, int vertexCount);
+RDR_API void rdrDrawQuads(rdrImpl* renderer, rdrVertex* vertices, int vertexCount);
 
 struct ImGuiContext;
 RDR_API void rdrSetImGuiContext(rdrImpl* renderer, struct ImGuiContext* context);

@@ -30,6 +30,10 @@ struct rdrImpl
     mat4x4 projection;
 
     float4 lineColor = { 1.f, 1.f, 1.f, 1.f };
+
+    float* texture;
+    int texWidth;
+    int texHeight;
 };
 
 struct Varying

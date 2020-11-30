@@ -8,6 +8,10 @@ struct CameraInputs
     float deltaY;
     bool moveForward;
     bool moveBackward;
+    bool moveLeft;
+    bool moveRight;
+    bool moveUpwards;
+    bool moveDownwards;
     // ... and more if needed
 };
 
@@ -23,10 +27,10 @@ struct Camera
 
     float yaw = 0;
     float pitch = 0;
-    float3 position = { 0, 0, 5.0f };
+    float3 position = { 0, 0, 10.0f };
 
     float aspect;
     float fovY = 80;
-    float near = 0.001f;
-    float far = 100.f;
+    float near = 0.15f;
+    float far = 75.f;
 };

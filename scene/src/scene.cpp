@@ -75,15 +75,15 @@ void loadObj(char const* inputfile, std::vector<rdrVertex>& vertices)
                 vertex.x = attrib.vertices[3.f * idx.vertex_index + 0.f];
                 vertex.y = attrib.vertices[3.f * idx.vertex_index + 1.f];
                 vertex.z = attrib.vertices[3.f * idx.vertex_index + 2.f];
-                vertex.nx = attrib.normals[3.f * idx.normal_index + 0.f];
-                vertex.ny = attrib.normals[3.f * idx.normal_index + 1.f];
-                vertex.nz = attrib.normals[3.f * idx.normal_index + 2.f];
-                vertex.u = attrib.texcoords[2.f * idx.texcoord_index + 0.f];
-                vertex.v = attrib.texcoords[2.f * idx.texcoord_index + 1.f];
+                vertex.r = attrib.normals[3.f * idx.normal_index + 0.f];
+                vertex.g = attrib.normals[3.f * idx.normal_index + 1.f];
+                vertex.b = attrib.normals[3.f * idx.normal_index + 2.f];
+                //vertex.u = attrib.texcoords[2.f * idx.texcoord_index + 0.f];
+                //vertex.v = attrib.texcoords[2.f * idx.texcoord_index + 1.f];
                 
-                vertex.r = attrib.colors[3 * idx.vertex_index + 0];
-                vertex.g = attrib.colors[3 * idx.vertex_index + 1];
-                vertex.b = attrib.colors[3 * idx.vertex_index + 2];
+                //vertex.r = 1.f;//attrib.colors[3 * idx.vertex_index + 0];
+                //vertex.g = 1.f;//attrib.colors[3 * idx.vertex_index + 1];
+                //vertex.b = 1.f;//attrib.colors[3 * idx.vertex_index + 2];
                 vertex.a = 1.f;
                 
                 vertices.push_back(vertex);
@@ -99,17 +99,19 @@ void loadObj(char const* inputfile, std::vector<rdrVertex>& vertices)
 scnImpl::scnImpl()
 {
     //loadObj("assets/boat_large.obj", vertices);
+    stbi_ldr_to_hdr_gamma(1.0f);
+    texture = stbi_loadf("assets/maxitest.png", &width, &height, nullptr, STBI_rgb_alpha);
 
-    //int width;
-    //int height;
-    //texture = stbi_loadf("test.png", &width, &height, nullptr, STBI_rgb_alpha);
+    printf("width = %i, height = %i\n", width, height);
+    printf("color[0] = {%f, %f, %f, %f}\n", texture[0], texture[1], texture[2], texture[3]);
     
     vertices = {
         //       pos                  normal                    color                   uv
-        {-0.5f,-0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 0.0f, 0.0f, 1.0f,     0.0f, 0.0f },
-        { 0.5f,-0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 0.0f, 1.0f,     0.0f, 0.0f },
-        { 0.0f, 0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 0.2f, 0.0f, 1.0f,     0.0f, 0.0f },
-
+        {-1.0f,-1.0f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },
+        { 1.0f,-1.0f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 0.0f },
+        { 1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 1.0f },
+        {-1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 1.0f },
+        /*
         { 0.5f,-0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      0.0f, 0.0f, 1.0f, 0.5f,     0.0f, 0.0f },
         { 0.0f, 0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 0.0f, 1.0f, 0.5f,     0.0f, 0.0f },
         { 0.0f, 0.5f,-1.5f,      0.0f, 0.0f, 0.0f,      1.0f, 0.0f, 0.0f, 1.0f,     0.0f, 0.0f },
@@ -118,9 +120,9 @@ scnImpl::scnImpl()
         { 0.5f,-0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      0.0f, 1.0f, 0.0f, 1.0f,     0.0f, 0.0f },
         { 0.0f, 0.5f,-1.5f,      0.0f, 0.0f, 0.0f,      1.0f, 0.2f, 0.0f, 1.0f,     0.0f, 0.0f },
 
-        {-0.5f,-0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 0.0f, 0.0f, 1.0f,     0.0f, 0.0f },
-        { 0.0f, 0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      0.0f, 0.0f, 1.0f, 1.0f,     0.0f, 0.0f },
-        { 0.0f, 0.5f,-1.5f,      0.0f, 0.0f, 0.0f,      1.0f, 0.2f, 0.0f, 1.0f,     0.0f, 0.0f },
+        {-0.5f,-0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },
+        { 0.0f, 0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },
+        { 0.0f, 0.5f,-1.5f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },*/
     };
 }
 
@@ -132,6 +134,7 @@ scnImpl::~scnImpl()
 void scnImpl::update(float deltaTime, rdrImpl* renderer)
 {
     // HERE: Update (if needed) and display the scene
+    rdrSetTexture(renderer, texture, width, height);
 
     // Hard coded matrix
     // TODO: Remove this and use proper functions !
@@ -147,7 +150,7 @@ void scnImpl::update(float deltaTime, rdrImpl* renderer)
     rdrSetModel(renderer, matrix.e);
 
     // Draw
-    rdrDrawTriangles(renderer, vertices.data(), (int)vertices.size());
+    rdrDrawQuads(renderer, vertices.data(), (int)vertices.size());
 
     time += deltaTime;
 }
@@ -155,4 +158,5 @@ void scnImpl::update(float deltaTime, rdrImpl* renderer)
 void scnImpl::showImGuiControls()
 {
     ImGui::SliderFloat("scale", &scale, 0.f, 10.f);
+    //ImGui::Image(texture, { width, height });
 }
