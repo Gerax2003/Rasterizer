@@ -146,6 +146,9 @@ int main(int argc, char* argv[])
     {
         newFrame(mouseCaptured);
 
+        float time = (float)glfwGetTime();
+        float deltaTime = ImGui::GetIO().DeltaTime;
+
         {
             double newMouseX, newMouseY;
             glfwGetCursorPos(window, &newMouseX, &newMouseY);
@@ -166,13 +169,13 @@ int main(int argc, char* argv[])
         {
             inputs.deltaX = mouseDeltaX;
             inputs.deltaY = mouseDeltaY;
-            inputs.moveForward  = ImGui::IsKeyDown(GLFW_KEY_UP) || ImGui::IsKeyDown(GLFW_KEY_Z);
+            inputs.moveForward  = ImGui::IsKeyDown(GLFW_KEY_UP) || ImGui::IsKeyDown(GLFW_KEY_W);
             inputs.moveBackward = ImGui::IsKeyDown(GLFW_KEY_DOWN) || ImGui::IsKeyDown(GLFW_KEY_S);
-            inputs.moveLeft     = ImGui::IsKeyDown(GLFW_KEY_LEFT) || ImGui::IsKeyDown(GLFW_KEY_Q);
-            inputs.moveRight    = ImGui::IsKeyDown(GLFW_KEY_RIGHT) || ImGui::IsKeyDown(GLFW_KEY_S);
+            inputs.moveLeft     = ImGui::IsKeyDown(GLFW_KEY_LEFT) || ImGui::IsKeyDown(GLFW_KEY_A);
+            inputs.moveRight    = ImGui::IsKeyDown(GLFW_KEY_RIGHT) || ImGui::IsKeyDown(GLFW_KEY_D);
             inputs.moveUpwards  = ImGui::IsKeyDown(GLFW_KEY_SPACE);
             inputs.moveDownwards = ImGui::IsKeyDown(GLFW_KEY_LEFT_SHIFT);
-            camera.update(ImGui::GetIO().DeltaTime, inputs);
+            camera.update(deltaTime, inputs);
         }
 
         // Clear buffers
@@ -183,6 +186,9 @@ int main(int argc, char* argv[])
         mat4x4 view       = camera.getViewMatrix();
         rdrSetProjection(renderer, projection.e);
         rdrSetView(renderer, view.e);
+
+        rdrSetUniformFloatV(renderer, UT_TIME, &time);
+        rdrSetUniformFloatV(renderer, UT_DELTATIME, &deltaTime);
 
         // Render scene
         scnUpdate(scene, ImGui::GetIO().DeltaTime, renderer);

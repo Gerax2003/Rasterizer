@@ -30,7 +30,11 @@ namespace mat4
     mat4x4 perspective(float fovY, float aspect, float near, float far);
     mat4x4 rotateX(float angleRadians);
     mat4x4 rotateY(float angleRadians);
+    mat4x4 rotateZ(float angleRadians);
+    mat4x4 scale(float scale);
     mat4x4 translate(float3 translate);
+
+    float3 cross(float3 vec1, float3 vec2);
 }
 
 float4 operator*(const mat4x4& m, float4 v);
@@ -38,3 +42,4 @@ mat4x4 operator*(const mat4x4& a, const mat4x4& b);
 float3 operator/(float3 v, float a);
 float3 operator-(float3 v);
 float4 operator*(float4 v, float a);
+float4 operator+(float4 a, float4 b);

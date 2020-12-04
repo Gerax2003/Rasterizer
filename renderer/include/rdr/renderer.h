@@ -23,6 +23,23 @@ typedef struct rdrVertex
     float u, v;       // Texture coordinates
 } rdrVertex;
 
+typedef struct rdrLight
+{
+    float x, y, z, w;
+    float r, g, b, a;
+    bool enabled;
+    float power;
+} rdrLight;
+
+enum rdrUniformType
+{
+    UT_TIME,      // 1 float
+    UT_DELTATIME, // 1 float
+
+    UT_USER = 100,
+};
+
+
 // Init/Shutdown function
 // Color and depth buffer have to be valid until the shutdown of the renderer
 // Color buffer is RGBA, each component is a 32 bits float
@@ -42,6 +59,10 @@ RDR_API void rdrSetTexture(rdrImpl* renderer, float* colors32Bits, int width, in
 // Draw a list of triangles
 RDR_API void rdrDrawTriangles(rdrImpl* renderer, rdrVertex* vertices, int vertexCount);
 RDR_API void rdrDrawQuads(rdrImpl* renderer, rdrVertex* vertices, int vertexCount);
+
+// Modify uniforms
+RDR_API void rdrSetUniformFloatV(rdrImpl* renderer, rdrUniformType type, float* value);
+RDR_API void rdrSetUniformLight(rdrImpl* renderer, int index, rdrLight* light);
 
 struct ImGuiContext;
 RDR_API void rdrSetImGuiContext(rdrImpl* renderer, struct ImGuiContext* context);

@@ -30,17 +30,17 @@ void rdrShutdown(rdrImpl* renderer)
 
 void rdrSetProjection(rdrImpl* renderer, float* projectionMatrix)
 {
-    memcpy(renderer->projection.e, projectionMatrix, 16 * sizeof(float));
+    memcpy(renderer->uniforms.proj.e, projectionMatrix, 16 * sizeof(float));
 }
 
 void rdrSetView(rdrImpl* renderer, float* viewMatrix)
 {
-    memcpy(renderer->view.e, viewMatrix, 16 * sizeof(float));
+    memcpy(renderer->uniforms.view.e, viewMatrix, 16 * sizeof(float));
 }
 
 void rdrSetModel(rdrImpl* renderer, float* modelMatrix)
 {
-    memcpy(renderer->model.e, modelMatrix, 16 * sizeof(float));
+    memcpy(renderer->uniforms.model.e, modelMatrix, 16 * sizeof(float));
 }
 
 void rdrSetViewport(rdrImpl* renderer, int x, int y, int width, int height)
@@ -51,9 +51,7 @@ void rdrSetViewport(rdrImpl* renderer, int x, int y, int width, int height)
 
 void rdrSetTexture(rdrImpl* renderer, float* colors32Bits, int width, int height)
 {
-    renderer->texture   = colors32Bits;
-    renderer->texWidth  = width;
-    renderer->texHeight = height;
+    renderer->uniforms.texture = { colors32Bits, width, height };
 }
 
 void drawPixel(float4* colorBuffer, int width, int height, int x, int y, float4 color)
@@ -90,6 +88,12 @@ float3 getBarycentricCoordinates(float4* points, float3 point)
     float lambda0 = ((points[1].y - points[2].y) * (point.x - points[2].x) + (points[2].x - points[1].x) * (point.y - points[2].y)) / ((points[1].y - points[2].y) * (points[0].x - points[2].x) + (points[2].x - points[1].x) * (points[0].y - points[2].y));
     float lambda1 = ((points[2].y - points[0].y) * (point.x - points[2].x) + (points[0].x - points[2].x) * (point.y - points[2].y)) / ((points[1].y - points[2].y) * (points[0].x - points[2].x) + (points[2].x - points[1].x) * (points[0].y - points[2].y));
     float lambda2 = 1 - lambda0 - lambda1;
+
+    float perspCorrection = lambda0 * points[0].w + lambda1 * points[1].w + lambda2 * points[2].w;
+
+    lambda0 = (lambda0 * points[0].w) / perspCorrection;
+    lambda1 = (lambda1 * points[1].w) / perspCorrection;
+    lambda2 = (lambda2 * points[2].w) / perspCorrection;
 
     return { lambda0, lambda1, lambda2 };
 }
@@ -157,11 +161,11 @@ float4 getBaryColor(float4* colors, float3 baryCoords)
     return { r, g, b, a };
 }
 
-float3 getNorms(Varying* variables, float3 baryCoords)
+float3 getNormals(Varying* variables, float3 baryCoords)
 {
-    float nx = baryCoords.x * variables[0].norms.x + baryCoords.y * variables[1].norms.x + baryCoords.z * variables[2].norms.x;
-    float ny = baryCoords.x * variables[0].norms.y + baryCoords.y * variables[1].norms.y + baryCoords.z * variables[2].norms.y;
-    float nz = baryCoords.x * variables[0].norms.z + baryCoords.y * variables[1].norms.z + baryCoords.z * variables[2].norms.z;
+    float nx = baryCoords.x * variables[0].normals.x + baryCoords.y * variables[1].normals.x + baryCoords.z * variables[2].normals.x;
+    float ny = baryCoords.x * variables[0].normals.y + baryCoords.y * variables[1].normals.y + baryCoords.z * variables[2].normals.y;
+    float nz = baryCoords.x * variables[0].normals.z + baryCoords.y * variables[1].normals.z + baryCoords.z * variables[2].normals.z;
 
     return { nx, ny, nz };
 }
@@ -172,8 +176,8 @@ Varying getVariables(Varying* variables, float3 baryCoords)
     float4 colors[3] = { variables[0].color, variables[1].color, variables[2].color };
     retVars.color = getBaryColor(colors, baryCoords);
 
-    retVars.norms = getNorms(variables, baryCoords);
-    retVars.light = baryCoords.x * variables[0].light + baryCoords.y * variables[1].light + baryCoords.z * variables[2].light;
+    retVars.normals = getNormals(variables, baryCoords);
+    retVars.light = variables[0].light * baryCoords.x + variables[1].light * baryCoords.y + variables[2].light * baryCoords.z;
     
     retVars.u = baryCoords.x * variables[0].u + baryCoords.y * variables[1].u + baryCoords.z * variables[2].u;
     retVars.v = baryCoords.x * variables[0].v + baryCoords.y * variables[1].v + baryCoords.z * variables[2].v;
@@ -208,22 +212,18 @@ bool checkBaryCoords(float3& baryCoords)
 
 float4 getColor(Varying& pixelVariables, rdrImpl* renderer)
 {
-    if (renderer->texWidth <= 0 || renderer->texHeight <= 0 || renderer->texture == nullptr)
-        return pixelVariables.color * pixelVariables.light;
+    if (renderer->uniforms.texture.texWidth <= 0 || renderer->uniforms.texture.texHeight <= 0 || renderer->uniforms.texture.texture == nullptr)
+        return pixelVariables.color; //* pixelVariables.light;
 
-    int texX = (int)(pixelVariables.u * renderer->texWidth) % renderer->texWidth;
-    int texY = renderer->texHeight - 1 - ((int)(pixelVariables.v * renderer->texHeight) % renderer->texHeight);
+    int texX = (int)(pixelVariables.u * renderer->uniforms.texture.texWidth) % renderer->uniforms.texture.texWidth;
+    int texY = renderer->uniforms.texture.texHeight - 1 - ((int)(pixelVariables.v * renderer->uniforms.texture.texHeight) % renderer->uniforms.texture.texHeight);
 
-    int index = (texY * renderer->texWidth + texX) * 4;
+    int index = (texY * renderer->uniforms.texture.texWidth + texX) * 4;
 
-    //printf("TexX = %i, texY = %i\n",texX, texY);
-
-    float r = pixelVariables.color.r * pixelVariables.light * renderer->texture[index + 0];
-    float g = pixelVariables.color.g * pixelVariables.light * renderer->texture[index + 1];
-    float b = pixelVariables.color.b * pixelVariables.light * renderer->texture[index + 2];
-    float a = pixelVariables.color.a * pixelVariables.light * renderer->texture[index + 3];
-
-    //printf("color = {%f, %f, %f, %f}\n", renderer->texture[index + 0], renderer->texture[index + 1], renderer->texture[index + 2], renderer->texture[index + 3]);
+    float r = pixelVariables.color.r * renderer->uniforms.texture.texture[index + 0];// *pixelVariables.light
+    float g = pixelVariables.color.g * renderer->uniforms.texture.texture[index + 1];// *pixelVariables.light
+    float b = pixelVariables.color.b * renderer->uniforms.texture.texture[index + 2];// *pixelVariables.light
+    float a = pixelVariables.color.a * renderer->uniforms.texture.texture[index + 3];// * pixelVariables.light
 
     return { r, g, b, a };
 }
@@ -248,23 +248,24 @@ void fillTriangle(rdrImpl* renderer, float4* points, Varying* variables)
         }
 }
 
-float3 ndcToScreenCoords(float3 ndc, const Viewport& viewport)
+float4 ndcToScreenCoords(float4 ndc, const Viewport& viewport)
 {
     return
     {
         viewport.x + (ndc.x +1.f) * (viewport.width) / 2.f,
         viewport.y + (-ndc.y + 1.f) * (viewport.height) / 2.f,
-        (-ndc.z + 1.f) / 2
+        (-ndc.z + 1.f) / 2, 
+        ndc.w
     };
 }
 
-float3 clipToNdcCoords(float4 clip)
+float4 clipToNdcCoords(float4 clip)
 {
-    float3 ndc = clip.xyz / clip.w;
+    float4 ndc = { clip.xyz / clip.w, 1 / clip.w };
     return ndc;
 }
 
-bool isOutside(const float4& vertice)
+bool clipping(const float4& vertice)
 {
     if ((vertice.x < -vertice.w || vertice.x > vertice.w) ||
         (vertice.y < -vertice.w || vertice.y > vertice.w) ||
@@ -274,48 +275,56 @@ bool isOutside(const float4& vertice)
         return false;
 }
 
+float3 getFaceNormal(rdrVertex* vertex)
+{
+    float3 vec1 = { vertex[1].x - vertex[0].x, vertex[1].y - vertex[0].y, vertex[1].z - vertex[0].z };
+    float3 vec2 = { vertex[2].x - vertex[0].x, vertex[2].y - vertex[0].y, vertex[2].z - vertex[0].z };
+
+    return mat4::cross(vec1, vec2);
+}
+
 float4 vertexShader(mat4x4 modelViewProj, rdrVertex vertex, Varying& variables)
 {
     float3 localCoords = { vertex.x, vertex.y, vertex.z };
 
-    variables = { 1.f, vertex.u, vertex.v, {vertex.nx, vertex.ny, vertex.nz}, {vertex.r, vertex.g, vertex.b, vertex.a} };
+    variables = { {1.f, 1.f, 1.f, 1.f}, vertex.u, vertex.v, {vertex.nx, vertex.ny, vertex.nz}, {vertex.r, vertex.g, vertex.b, vertex.a} };
 
     return { modelViewProj * float4{localCoords, 1.f} };
 }
 
-void drawTriangle(rdrImpl* renderer, mat4x4 modelViewProj, rdrVertex* vertices)
+void drawTriangle(rdrImpl* renderer, rdrVertex* vertices)
 {
     Varying variables[3] = { {}, {}, {} };
 
     // Local space (v3) -> Clip space (v4), 4d (perspective)
     float4 clipCoords[3] = {
-        { vertexShader(modelViewProj, vertices[0], variables[0]) },
-        { vertexShader(modelViewProj, vertices[1], variables[1]) },
-        { vertexShader(modelViewProj, vertices[2], variables[2]) },
+        { vertexShader(renderer->uniforms.modelViewProj, vertices[0], variables[0]) },
+        { vertexShader(renderer->uniforms.modelViewProj, vertices[1], variables[1]) },
+        { vertexShader(renderer->uniforms.modelViewProj, vertices[2], variables[2]) },
     };
 
-    if (isOutside(clipCoords[0]) || isOutside(clipCoords[1]) || isOutside(clipCoords[2]))
+    float3 faceNormal = getFaceNormal(vertices);
+    printf("faceNormal = %f, %f, %f\n", faceNormal.x, faceNormal.y, faceNormal.z);
+
+    if (clipping(clipCoords[0]) || clipping(clipCoords[1]) || clipping(clipCoords[2]))
         return;
 
     // Clip space (v4) to NDC (v3) (3d, -1 < n < 1)
-    // TODO
-    float3 ndcCoords[3] = {
+    float4 ndcCoords[3] = {
         { clipToNdcCoords(clipCoords[0]) },
         { clipToNdcCoords(clipCoords[1]) },
         { clipToNdcCoords(clipCoords[2]) },
     };
 
     // NDC (v3) to screen coords (v2) (2d, 0 à size)
-    // TODO
     float4 screenCoords[3] = {
-        { ndcToScreenCoords(ndcCoords[0], renderer->viewport), clipCoords[0].w },
-        { ndcToScreenCoords(ndcCoords[1], renderer->viewport), clipCoords[1].w },
-        { ndcToScreenCoords(ndcCoords[2], renderer->viewport), clipCoords[2].w },
+        { ndcToScreenCoords(ndcCoords[0], renderer->viewport) },
+        { ndcToScreenCoords(ndcCoords[1], renderer->viewport) },
+        { ndcToScreenCoords(ndcCoords[2], renderer->viewport) },
     };
 
-    /*
     // Wireframe
-    drawLine(renderer->fb, screenCoords[0], screenCoords[1], renderer->lineColor);
+    /*drawLine(renderer->fb, screenCoords[0], screenCoords[1], renderer->lineColor);
     drawLine(renderer->fb, screenCoords[1], screenCoords[2], renderer->lineColor);
     drawLine(renderer->fb, screenCoords[2], screenCoords[0], renderer->lineColor);*/
 
@@ -325,24 +334,42 @@ void drawTriangle(rdrImpl* renderer, mat4x4 modelViewProj, rdrVertex* vertices)
 
 void rdrDrawTriangles(rdrImpl* renderer, rdrVertex* vertices, int count)
 {
-    mat4x4 modelViewProj = renderer->projection * renderer->model * renderer->view;
+    renderer->uniforms.modelViewProj = renderer->uniforms.proj * renderer->uniforms.model * renderer->uniforms.view;
     // Transform vertex list to triangles into colorBuffer
     for (int i = 0; i < count; i += 3)
     {
-        drawTriangle(renderer, modelViewProj, &vertices[i]);
+        drawTriangle(renderer, &vertices[i]);
     }
 }
 
 void rdrDrawQuads(rdrImpl* renderer, rdrVertex* vertices, int vertexCount)
 {
-    mat4x4 modelViewProj = renderer->projection * renderer->model * renderer->view; 
+    renderer->uniforms.modelViewProj = renderer->uniforms.proj * renderer->uniforms.model * renderer->uniforms.view;
     // Transform vertex list to triangles into colorBuffer
     for (int i = 0; i < vertexCount; i += 4)
     {
-        drawTriangle(renderer, modelViewProj, &vertices[i]);
+        drawTriangle(renderer, &vertices[i]);
         rdrVertex tempVertices[3] = { vertices[i + 2], vertices[i + 3], vertices[i] };
-        drawTriangle(renderer, modelViewProj, tempVertices);
+        drawTriangle(renderer, tempVertices);
     }
+}
+
+void rdrSetUniformFloatV(rdrImpl* renderer, rdrUniformType type, float* value)
+{
+    switch (type)
+    {
+    case UT_TIME:      renderer->uniforms.time = value[0]; break;
+    case UT_DELTATIME: renderer->uniforms.deltaTime = value[0]; break;
+    default:;
+    }
+}
+
+void rdrSetUniformLight(rdrImpl* renderer, int index, rdrLight* light)
+{
+    if (index < 0 || index >= IM_ARRAYSIZE(renderer->uniforms.lights))
+        return;
+
+    memcpy(&renderer->uniforms.lights[index], light, sizeof(rdrLight));
 }
 
 void rdrSetImGuiContext(rdrImpl* renderer, struct ImGuiContext* context)
@@ -369,14 +396,9 @@ void rdrShowImGuiControls(rdrImpl* renderer)
     ImGui::Checkbox("Show Model", &showModel);
 
     if (showMVP)
-    {
-        mat4x4 modelViewProj = renderer->projection * renderer->model * renderer->view;
-        showMatrix(modelViewProj, "mvp");
-    }
+        showMatrix(renderer->uniforms.modelViewProj, "mvp");
     if (showModel)
-    {
-        showMatrix(renderer->model, "model");
-    }
+        showMatrix(renderer->uniforms.model, "model");
 
     float FPS = 1 / ImGui::GetIO().DeltaTime;
     ImGui::Text("Frame per second = %5.2f", FPS);

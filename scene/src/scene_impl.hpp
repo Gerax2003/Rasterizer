@@ -17,8 +17,13 @@ struct scnImpl
 private:
     double time = 0.0;
     std::vector<rdrVertex> vertices;
+
     float* texture;
     int width;
     int height;
+
     float scale = 1.f;
+    float rotateX = 0.f;
+    float rotateY = 0.f;
+    float rotateZ = 0.f;
 };

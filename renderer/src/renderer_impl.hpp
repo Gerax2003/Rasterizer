@@ -20,27 +20,49 @@ struct Framebuffer
     float* depthBuffer;
 };
 
-struct rdrImpl
+struct Texture
 {
-    Framebuffer fb;
-    Viewport viewport;
-
-    mat4x4 model;
-    mat4x4 view;
-    mat4x4 projection;
-
-    float4 lineColor = { 1.f, 1.f, 1.f, 1.f };
-
-    float* texture;
+    float* texture = nullptr;
     int texWidth;
     int texHeight;
 };
 
 struct Varying
 {
-    float light;
+    float4 light;
     float u;
     float v;
-    float3 norms;
+    float3 normals;
     float4 color;
+};
+
+struct Light
+{
+    float4 position;
+    float4 color;
+    bool enabled = false;
+    float power;
+};
+
+struct Uniforms
+{
+    mat4x4 modelViewProj;
+    mat4x4 model;
+    mat4x4 view;
+    mat4x4 proj;
+
+    Texture texture;
+    float time;
+    float deltaTime;
+    Light lights[8];
+};
+
+struct rdrImpl
+{
+    Framebuffer fb;
+    Viewport viewport;
+
+    float4 lineColor = { 1.f, 1.f, 1.f, 1.f };
+
+    Uniforms uniforms;
 };

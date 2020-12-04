@@ -75,21 +75,20 @@ void loadObj(char const* inputfile, std::vector<rdrVertex>& vertices)
                 vertex.x = attrib.vertices[3.f * idx.vertex_index + 0.f];
                 vertex.y = attrib.vertices[3.f * idx.vertex_index + 1.f];
                 vertex.z = attrib.vertices[3.f * idx.vertex_index + 2.f];
-                vertex.r = attrib.normals[3.f * idx.normal_index + 0.f];
-                vertex.g = attrib.normals[3.f * idx.normal_index + 1.f];
-                vertex.b = attrib.normals[3.f * idx.normal_index + 2.f];
-                //vertex.u = attrib.texcoords[2.f * idx.texcoord_index + 0.f];
-                //vertex.v = attrib.texcoords[2.f * idx.texcoord_index + 1.f];
+                //vertex.r = attrib.normals[3.f * idx.normal_index + 0.f];
+                //vertex.g = attrib.normals[3.f * idx.normal_index + 1.f];
+                //vertex.b = attrib.normals[3.f * idx.normal_index + 2.f];
+                vertex.u = attrib.texcoords[2.f * idx.texcoord_index + 0.f];
+                vertex.v = attrib.texcoords[2.f * idx.texcoord_index + 1.f];
                 
-                //vertex.r = 1.f;//attrib.colors[3 * idx.vertex_index + 0];
-                //vertex.g = 1.f;//attrib.colors[3 * idx.vertex_index + 1];
-                //vertex.b = 1.f;//attrib.colors[3 * idx.vertex_index + 2];
+                vertex.r = 1.f;//attrib.colors[3 * idx.vertex_index + 0];
+                vertex.g = 1.f;//attrib.colors[3 * idx.vertex_index + 1];
+                vertex.b = 1.f;//attrib.colors[3 * idx.vertex_index + 2];
                 vertex.a = 1.f;
                 
                 vertices.push_back(vertex);
             }
             index_offset += fv;
-
             // per-face material
             shapes[s].mesh.material_ids[f];
         }
@@ -98,31 +97,18 @@ void loadObj(char const* inputfile, std::vector<rdrVertex>& vertices)
 
 scnImpl::scnImpl()
 {
-    //loadObj("assets/boat_large.obj", vertices);
+    //loadObj("assets/Barioth/Barioth.obj", vertices);
     stbi_ldr_to_hdr_gamma(1.0f);
-    texture = stbi_loadf("assets/maxitest.png", &width, &height, nullptr, STBI_rgb_alpha);
+    texture = stbi_loadf("assets/Tests/minitest.png", &width, &height, nullptr, STBI_rgb_alpha);
 
     printf("width = %i, height = %i\n", width, height);
-    printf("color[0] = {%f, %f, %f, %f}\n", texture[0], texture[1], texture[2], texture[3]);
     
     vertices = {
         //       pos                  normal                    color                   uv
         {-1.0f,-1.0f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },
-        { 1.0f,-1.0f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 0.0f },
-        { 1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 1.0f },
-        {-1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 1.0f },
-        /*
-        { 0.5f,-0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      0.0f, 0.0f, 1.0f, 0.5f,     0.0f, 0.0f },
-        { 0.0f, 0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 0.0f, 1.0f, 0.5f,     0.0f, 0.0f },
-        { 0.0f, 0.5f,-1.5f,      0.0f, 0.0f, 0.0f,      1.0f, 0.0f, 0.0f, 1.0f,     0.0f, 0.0f },
-        
-        {-0.5f,-0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 0.0f, 0.0f, 1.0f,     0.0f, 0.0f },
-        { 0.5f,-0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      0.0f, 1.0f, 0.0f, 1.0f,     0.0f, 0.0f },
-        { 0.0f, 0.5f,-1.5f,      0.0f, 0.0f, 0.0f,      1.0f, 0.2f, 0.0f, 1.0f,     0.0f, 0.0f },
-
-        {-0.5f,-0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },
-        { 0.0f, 0.5f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },
-        { 0.0f, 0.5f,-1.5f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },*/
+        { 1.0f,-1.0f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     4.5f, 0.0f },
+        { 1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     4.5f, 4.5f },
+        {-1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 4.5f },
     };
 }
 
@@ -136,16 +122,8 @@ void scnImpl::update(float deltaTime, rdrImpl* renderer)
     // HERE: Update (if needed) and display the scene
     rdrSetTexture(renderer, texture, width, height);
 
-    // Hard coded matrix
-    // TODO: Remove this and use proper functions !
-    mat4x4 matrix = {
-        scale, 0.f, 0.f, 0.f,
-        0.f, scale, 0.f, 0.f,
-        0.f, 0.f, scale, 0.f,
-        0.5f, 0.1f, 0.f, 1.f,
-    };
-
-    //matrix = matrix * mat4::rotateY((float)(time * 2.0));
+    mat4x4 matrix = mat4::scale(scale);
+    matrix = matrix * mat4::rotateX(rotateX) * mat4::rotateY(rotateY) * mat4::rotateZ(rotateZ);
 
     rdrSetModel(renderer, matrix.e);
 
@@ -158,5 +136,7 @@ void scnImpl::update(float deltaTime, rdrImpl* renderer)
 void scnImpl::showImGuiControls()
 {
     ImGui::SliderFloat("scale", &scale, 0.f, 10.f);
-    //ImGui::Image(texture, { width, height });
+    ImGui::SliderFloat("Rotation x", &rotateX, 0.f, 3.1415f);
+    ImGui::SliderFloat("Rotation y", &rotateY, 0.f, 3.1415f);
+    ImGui::SliderFloat("Rotation z", &rotateZ, 0.f, 3.1415f);
 }

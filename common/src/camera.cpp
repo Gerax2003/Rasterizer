@@ -15,17 +15,30 @@ void Camera::update(float deltaTime, const CameraInputs& inputs)
     const float MOUSE_SENSITIVITY = 0.002f;
     const float SPEED = 5.f;
 
-    yaw += inputs.deltaX * MOUSE_SENSITIVITY;
+    yaw -= inputs.deltaX * MOUSE_SENSITIVITY;
     pitch += inputs.deltaY * MOUSE_SENSITIVITY;
 
     float forward_movement = 0.f;
+    float horizontal_movement = 0.f;
+    float vertical_movement = 0.f;
+
     if (inputs.moveForward)
         forward_movement -= SPEED * deltaTime;
     if (inputs.moveBackward)
         forward_movement += SPEED * deltaTime;
+    if (inputs.moveLeft)
+        horizontal_movement -= SPEED * deltaTime;
+    if (inputs.moveRight)
+        horizontal_movement += SPEED * deltaTime;
+    if (inputs.moveUpwards)
+        vertical_movement += SPEED * deltaTime;
+    if (inputs.moveDownwards)
+        vertical_movement -= SPEED * deltaTime;
 
-    position.x += maths::sin(yaw) * forward_movement;
-    position.z += maths::cos(yaw) * forward_movement;
+    position.x += (maths::sin(yaw) * forward_movement) + ( maths::cos(yaw) * horizontal_movement);
+    position.z += (maths::cos(yaw) * forward_movement) + (-maths::sin(yaw) * horizontal_movement);
+
+    position.y += vertical_movement;
 }
 
 mat4x4 Camera::getViewMatrix()

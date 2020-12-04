@@ -40,6 +40,11 @@ float4 operator*(float4 v, float a)
 	return { v.x * a, v.y * a, v.z * a, v.w * a };
 }
 
+float4 operator+(float4 a, float4 b)
+{
+	return { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w };
+}
+
 mat4x4 mat4::frustum(float left, float right, float bottom, float top, float near, float far)
 {
 	return {
@@ -96,6 +101,24 @@ mat4x4 mat4::rotateY(float angleRadians)
 	//return identity();
 }
 
+mat4x4 mat4::rotateZ(float angleRadians)
+{
+	return identity();
+}
+
+mat4x4 mat4::scale(float scale)
+{
+	if (scale == 0)
+		scale = 0.0001f;
+
+	return {
+		scale, 0.f, 0.f, 0.f,
+		0.f, scale, 0.f, 0.f,
+		0.f, 0.f, scale, 0.f,
+		0.0f, 0.0f, 0.f, 1.f,
+	};
+}
+
 mat4x4 mat4::translate(float3 translate)
 {
 	return {
@@ -104,4 +127,15 @@ mat4x4 mat4::translate(float3 translate)
 		0, 0, 1, 0,
 		translate.x, translate.y, translate.z, 1
 	};
+}
+
+float3 mat4::cross(float3 vec1, float3 vec2)
+{
+	float3 retVec = {};
+
+	retVec.x = vec1.y * vec2.z - vec1.z * vec2.y;
+	retVec.y = vec1.z * vec2.x - vec1.x * vec2.z;
+	retVec.z = vec1.x * vec2.y - vec1.y * vec2.x;
+
+	return retVec;
 }
