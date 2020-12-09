@@ -4,6 +4,8 @@
 
 #include <common/types.hpp>
 
+static float3 lightPos = { 2.f, 10.f, 4.f };
+
 struct Viewport
 {
     int x;
@@ -29,32 +31,48 @@ struct Texture
 
 struct Varying
 {
-    float4 light;
     float u;
     float v;
     float3 normals;
     float4 color;
+    float4 worldPos;
 };
 
 struct Light
 {
-    float4 position;
-    float4 color;
-    bool enabled = false;
-    float power;
+    bool enabled;
+    float4 position; // world pos
+    float4 ambient;
+    float4 diffuse;
+    float4 specular;
+    float3 attenuation;
+};
+
+struct Material
+{
+    float4 ambientColor;
+    float4 diffuseColor;
+    float4 specularColor;
+    float4 emissionColor;
+    float shininess;
 };
 
 struct Uniforms
 {
     mat4x4 modelViewProj;
+    mat4x4 viewProj;
     mat4x4 model;
     mat4x4 view;
     mat4x4 proj;
 
     Texture texture;
+    Light lights[8];
+    Material material;
+    
     float time;
     float deltaTime;
-    Light lights[8];
+
+    bool gouraud = true;
 };
 
 struct rdrImpl

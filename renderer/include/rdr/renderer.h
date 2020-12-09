@@ -25,11 +25,22 @@ typedef struct rdrVertex
 
 typedef struct rdrLight
 {
-    float x, y, z, w;
-    float r, g, b, a;
     bool enabled;
-    float power;
+    float position[4]; // world pos
+    float ambient[4];
+    float diffuse[4];
+    float specular[4];
+    float attenuation[3];
 } rdrLight;
+
+typedef struct rdrMaterial
+{
+    float ambientColor[4];
+    float diffuseColor[4];
+    float specularColor[4];
+    float emissionColor[4];
+    float shininess;
+} rdrMaterial;
 
 enum rdrUniformType
 {
@@ -37,6 +48,7 @@ enum rdrUniformType
     UT_DELTATIME, // 1 float
 
     UT_USER = 100,
+    UT_GOURAUD,
 };
 
 
@@ -62,7 +74,9 @@ RDR_API void rdrDrawQuads(rdrImpl* renderer, rdrVertex* vertices, int vertexCoun
 
 // Modify uniforms
 RDR_API void rdrSetUniformFloatV(rdrImpl* renderer, rdrUniformType type, float* value);
+RDR_API void rdrSetUniformBoolV(rdrImpl* renderer, rdrUniformType type, bool value);
 RDR_API void rdrSetUniformLight(rdrImpl* renderer, int index, rdrLight* light);
+RDR_API void rdrSetUniformMaterial(rdrImpl* renderer, rdrMaterial* material);
 
 struct ImGuiContext;
 RDR_API void rdrSetImGuiContext(rdrImpl* renderer, struct ImGuiContext* context);

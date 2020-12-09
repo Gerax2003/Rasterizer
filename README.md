@@ -5,15 +5,17 @@
 Rendering using vertices and their colors using barycentric coordinates  
 Perspective with working rotations and translation matrix  
 Basic clipping  
-Camera translation/rotation (X & Y axis)  
+Camera translation/rotation (ZQSD/arrow keys for horizontal movement, Lshift and space for vertical movement)  
 Translation and rotation functions (X & Y axis)  
 Vertex shader (For color and textures only)  
 Texture rendering using UV coords  
 Perspective correction  
+Hard coded lighting (ambient & specular)  
 
 ## WIP
 ---
-Lighting  
+Lighting with specular values and attenuation  
+8 lights  
 Optimisation and proper clipping  
 Vertex shader for lightning  
 Back-face culling  
@@ -31,3 +33,4 @@ Wikipedia links:
 -[Projection matrix](https://en.wikipedia.org/wiki/3D_projection#Perspective_projection)  
 -[Texture mapping](https://en.wikipedia.org/wiki/Texture_mapping)  
 -[Back-face culling](https://en.wikipedia.org/wiki/Back-face_culling)  
+-[Phong shading](https://en.wikipedia.org/wiki/Phong_shading)  

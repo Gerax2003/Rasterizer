@@ -54,6 +54,14 @@ void rdrSetTexture(rdrImpl* renderer, float* colors32Bits, int width, int height
     renderer->uniforms.texture = { colors32Bits, width, height };
 }
 
+void rdrSetUniformMaterial(rdrImpl* renderer, rdrMaterial* material)
+{
+    if (material == nullptr)
+        return;
+
+    memcpy(&renderer->uniforms.material, material, sizeof(rdrMaterial));
+}
+
 void drawPixel(float4* colorBuffer, int width, int height, int x, int y, float4 color)
 {
     if (x < 0 || x >= width || y < 0 || y >= height)
@@ -85,8 +93,10 @@ void drawLine(const Framebuffer& fb, float3 p0, float3 p1, float4 color)
 
 float3 getBarycentricCoordinates(float4* points, float3 point)
 {
-    float lambda0 = ((points[1].y - points[2].y) * (point.x - points[2].x) + (points[2].x - points[1].x) * (point.y - points[2].y)) / ((points[1].y - points[2].y) * (points[0].x - points[2].x) + (points[2].x - points[1].x) * (points[0].y - points[2].y));
-    float lambda1 = ((points[2].y - points[0].y) * (point.x - points[2].x) + (points[0].x - points[2].x) * (point.y - points[2].y)) / ((points[1].y - points[2].y) * (points[0].x - points[2].x) + (points[2].x - points[1].x) * (points[0].y - points[2].y));
+    float barycenterDivide = (points[1].y - points[2].y) * (points[0].x - points[2].x) + (points[2].x - points[1].x) * (points[0].y - points[2].y);
+
+    float lambda0 = ((points[1].y - points[2].y) * (point.x - points[2].x) + (points[2].x - points[1].x) * (point.y - points[2].y)) / barycenterDivide;
+    float lambda1 = ((points[2].y - points[0].y) * (point.x - points[2].x) + (points[0].x - points[2].x) * (point.y - points[2].y)) / barycenterDivide;
     float lambda2 = 1 - lambda0 - lambda1;
 
     float perspCorrection = lambda0 * points[0].w + lambda1 * points[1].w + lambda2 * points[2].w;
@@ -177,7 +187,6 @@ Varying getVariables(Varying* variables, float3 baryCoords)
     retVars.color = getBaryColor(colors, baryCoords);
 
     retVars.normals = getNormals(variables, baryCoords);
-    retVars.light = variables[0].light * baryCoords.x + variables[1].light * baryCoords.y + variables[2].light * baryCoords.z;
     
     retVars.u = baryCoords.x * variables[0].u + baryCoords.y * variables[1].u + baryCoords.z * variables[2].u;
     retVars.v = baryCoords.x * variables[0].v + baryCoords.y * variables[1].v + baryCoords.z * variables[2].v;
@@ -208,6 +217,12 @@ bool checkBaryCoords(float3& baryCoords)
         return true;
     else
         return false;
+}
+
+float4 pixelShader(Uniforms uniforms, Varying var)
+{
+    //float3 l = v3::unitVector3(lightPos - var.worldPos);
+    return { 1.f, 1.f, 1.f, 1.f };
 }
 
 float4 getColor(Varying& pixelVariables, rdrImpl* renderer)
@@ -261,6 +276,9 @@ float4 ndcToScreenCoords(float4 ndc, const Viewport& viewport)
 
 float4 clipToNdcCoords(float4 clip)
 {
+    if (clip.w == 0)
+        clip.w = 0.00001f;
+
     float4 ndc = { clip.xyz / clip.w, 1 / clip.w };
     return ndc;
 }
@@ -280,16 +298,53 @@ float3 getFaceNormal(rdrVertex* vertex)
     float3 vec1 = { vertex[1].x - vertex[0].x, vertex[1].y - vertex[0].y, vertex[1].z - vertex[0].z };
     float3 vec2 = { vertex[2].x - vertex[0].x, vertex[2].y - vertex[0].y, vertex[2].z - vertex[0].z };
 
-    return mat4::cross(vec1, vec2);
+    return v3::unitVector3(v3::cross(vec1, vec2));
 }
 
-float4 vertexShader(mat4x4 modelViewProj, rdrVertex vertex, Varying& variables)
+float getDiffuseFactor(float3 lightDir, float3 normal)
 {
-    float3 localCoords = { vertex.x, vertex.y, vertex.z };
+    return v3::dotProductVector3(lightDir, normal);
+}
 
-    variables = { {1.f, 1.f, 1.f, 1.f}, vertex.u, vertex.v, {vertex.nx, vertex.ny, vertex.nz}, {vertex.r, vertex.g, vertex.b, vertex.a} };
+float getSpecularFactor(float3 lightDir, float3 normal)
+{
+    return 0.f;
+}
 
-    return { modelViewProj * float4{localCoords, 1.f} };
+float4 vertexShader(Uniforms uniforms, rdrVertex vertex, Varying& variables)
+{
+    float3 localNormalPos = { vertex.nx, vertex.ny, vertex.nz };
+    float4 worldNormalPos = uniforms.model * float4{ localNormalPos, 0.f };
+    float4 worldCoords4 = uniforms.model * float4{ vertex.x, vertex.y, vertex.z, 1.f };
+
+    if (uniforms.gouraud == true)
+    {
+        // Test
+        float3 la = { 0.2f, 0.f, 0.f }; //ambient light
+        float3 kd = { 1.f, 1.f, 1.f }; //diffuse coefficient
+        float3 ld = { 1.f, 1.f, 1.f }; //diffuse light
+
+        float4 clipCoords = uniforms.viewProj * worldCoords4;
+
+        //float4 cameraPos = uniforms.view * float4(0.f, 0.f, 0.f, 1.f);
+
+        float3 l = v3::unitVector3(lightPos - worldCoords4.xyz);
+
+        float3 ambiantColor = la;
+        float3 diffuseColor = kd * getDiffuseFactor(l, worldNormalPos.xyz) * ld;
+        float3 shadedColor = diffuseColor + ambiantColor;
+
+        variables.color = { vertex.r * shadedColor.x, vertex.g * shadedColor.y, vertex.b * shadedColor.z, vertex.a };
+    }
+    else
+        variables.color = { vertex.r, vertex.g, vertex.b, vertex.a };
+
+    variables.normals = worldNormalPos.xyz;
+    variables.u = vertex.u;
+    variables.v = vertex.v;
+    variables.worldPos = worldCoords4;
+
+    return { uniforms.modelViewProj * float4{vertex.x, vertex.y, vertex.z, 1.f} };
 }
 
 void drawTriangle(rdrImpl* renderer, rdrVertex* vertices)
@@ -298,13 +353,12 @@ void drawTriangle(rdrImpl* renderer, rdrVertex* vertices)
 
     // Local space (v3) -> Clip space (v4), 4d (perspective)
     float4 clipCoords[3] = {
-        { vertexShader(renderer->uniforms.modelViewProj, vertices[0], variables[0]) },
-        { vertexShader(renderer->uniforms.modelViewProj, vertices[1], variables[1]) },
-        { vertexShader(renderer->uniforms.modelViewProj, vertices[2], variables[2]) },
+        { vertexShader(renderer->uniforms, vertices[0], variables[0]) },
+        { vertexShader(renderer->uniforms, vertices[1], variables[1]) },
+        { vertexShader(renderer->uniforms, vertices[2], variables[2]) },
     };
 
     float3 faceNormal = getFaceNormal(vertices);
-    printf("faceNormal = %f, %f, %f\n", faceNormal.x, faceNormal.y, faceNormal.z);
 
     if (clipping(clipCoords[0]) || clipping(clipCoords[1]) || clipping(clipCoords[2]))
         return;
@@ -345,6 +399,7 @@ void rdrDrawTriangles(rdrImpl* renderer, rdrVertex* vertices, int count)
 void rdrDrawQuads(rdrImpl* renderer, rdrVertex* vertices, int vertexCount)
 {
     renderer->uniforms.modelViewProj = renderer->uniforms.proj * renderer->uniforms.model * renderer->uniforms.view;
+    renderer->uniforms.viewProj = renderer->uniforms.view * renderer->uniforms.proj;
     // Transform vertex list to triangles into colorBuffer
     for (int i = 0; i < vertexCount; i += 4)
     {
@@ -360,6 +415,15 @@ void rdrSetUniformFloatV(rdrImpl* renderer, rdrUniformType type, float* value)
     {
     case UT_TIME:      renderer->uniforms.time = value[0]; break;
     case UT_DELTATIME: renderer->uniforms.deltaTime = value[0]; break;
+    default:;
+    }
+}
+
+void rdrSetUniformBoolV(rdrImpl* renderer, rdrUniformType type, bool value)
+{
+    switch (type)
+    {
+    case UT_GOURAUD: renderer->uniforms.gouraud = value; break;
     default:;
     }
 }
@@ -402,4 +466,7 @@ void rdrShowImGuiControls(rdrImpl* renderer)
 
     float FPS = 1 / ImGui::GetIO().DeltaTime;
     ImGui::Text("Frame per second = %5.2f", FPS);
+    ImGui::SliderFloat3("LightPos", lightPos.e, -10, 10);
+
+    ImGui::Checkbox("Gouraud shading", &renderer->uniforms.gouraud);
 }

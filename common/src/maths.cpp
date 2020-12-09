@@ -3,48 +3,6 @@
 
 #include <common/maths.hpp>
 
-float4 operator*(const mat4x4& m, float4 v)
-{
-	float4 retFloat = {};
-	
-	for (int i = 0; i < 4; i++)
-		retFloat.e[i] = v.e[0] * m.c[0].e[i] + v.e[1] * m.c[1].e[i] + v.e[2] * m.c[2].e[i] + v.e[3] * m.c[3].e[i];
-
-	return retFloat;
-}
-
-mat4x4 operator*(const mat4x4& a, const mat4x4& b)
-{
-	mat4x4 retMat = {};
-
-	for (int line = 0; line < 4; line++)
-		for (int column = 0; column < 4; column++)
-			for (int i = 0; i < 4; i++)
-				retMat.c[column].e[line] += a.c[i].e[line] * b.c[column].e[i];
-
-	return retMat;
-}
-
-float3 operator/(float3 v, float a)
-{
-	return { v.x / a, v.y / a, v.z / a };
-}
-
-float3 operator-(float3 v)
-{
-	return { -v.x, -v.y, -v.z };
-}
-
-float4 operator*(float4 v, float a)
-{
-	return { v.x * a, v.y * a, v.z * a, v.w * a };
-}
-
-float4 operator+(float4 a, float4 b)
-{
-	return { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w };
-}
-
 mat4x4 mat4::frustum(float left, float right, float bottom, float top, float near, float far)
 {
 	return {
@@ -103,7 +61,13 @@ mat4x4 mat4::rotateY(float angleRadians)
 
 mat4x4 mat4::rotateZ(float angleRadians)
 {
-	return identity();
+	return {
+		cos(angleRadians),  sin(angleRadians),   0,                 0,
+		-sin(angleRadians), cos(angleRadians),   0,					0,
+		0,                   0,					 1,					0,
+		0,                   0,                  0,                 1
+	};
+	//return identity();
 }
 
 mat4x4 mat4::scale(float scale)
@@ -129,7 +93,7 @@ mat4x4 mat4::translate(float3 translate)
 	};
 }
 
-float3 mat4::cross(float3 vec1, float3 vec2)
+float3 v3::cross(float3 vec1, float3 vec2)
 {
 	float3 retVec = {};
 
@@ -138,4 +102,15 @@ float3 mat4::cross(float3 vec1, float3 vec2)
 	retVec.z = vec1.x * vec2.y - vec1.y * vec2.x;
 
 	return retVec;
+}
+
+float3 v3::unitVector3(float3 vector)
+{
+	float len = lengthVector3(vector);
+
+	float x = vector.x / len;
+	float y = vector.y / len;
+	float z = vector.z / len;
+
+	return { x, y, z };
 }

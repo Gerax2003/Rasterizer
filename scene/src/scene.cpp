@@ -75,9 +75,9 @@ void loadObj(char const* inputfile, std::vector<rdrVertex>& vertices)
                 vertex.x = attrib.vertices[3.f * idx.vertex_index + 0.f];
                 vertex.y = attrib.vertices[3.f * idx.vertex_index + 1.f];
                 vertex.z = attrib.vertices[3.f * idx.vertex_index + 2.f];
-                //vertex.r = attrib.normals[3.f * idx.normal_index + 0.f];
-                //vertex.g = attrib.normals[3.f * idx.normal_index + 1.f];
-                //vertex.b = attrib.normals[3.f * idx.normal_index + 2.f];
+                vertex.nx = attrib.normals[3.f * idx.normal_index + 0.f];
+                vertex.ny = attrib.normals[3.f * idx.normal_index + 1.f];
+                vertex.nz = attrib.normals[3.f * idx.normal_index + 2.f];
                 vertex.u = attrib.texcoords[2.f * idx.texcoord_index + 0.f];
                 vertex.v = attrib.texcoords[2.f * idx.texcoord_index + 1.f];
                 
@@ -97,19 +97,24 @@ void loadObj(char const* inputfile, std::vector<rdrVertex>& vertices)
 
 scnImpl::scnImpl()
 {
-    //loadObj("assets/Barioth/Barioth.obj", vertices);
+    loadObj("assets/Tests/boat_large.obj", vertices);
     stbi_ldr_to_hdr_gamma(1.0f);
     texture = stbi_loadf("assets/Tests/minitest.png", &width, &height, nullptr, STBI_rgb_alpha);
 
     printf("width = %i, height = %i\n", width, height);
-    
+    /*
     vertices = {
         //       pos                  normal                    color                   uv
-        {-1.0f,-1.0f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },
-        { 1.0f,-1.0f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     4.5f, 0.0f },
-        { 1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     4.5f, 4.5f },
-        {-1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 4.5f },
-    };
+        {-1.0f,-1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },
+        { 1.0f,-1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 0.0f },
+        { 1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 1.0f },
+        {-1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 1.0f },
+
+        {-1.0f,-1.0f,-2.0f,      0.0f,-1.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },
+        { 1.0f,-1.0f,-2.0f,      0.0f,-1.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 0.0f },
+        { 1.0f,-1.0f, 0.0f,      0.0f,-1.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 1.0f },
+        {-1.0f,-1.0f, 0.0f,      0.0f,-1.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 1.0f },
+    };*/
 }
 
 scnImpl::~scnImpl()
@@ -120,7 +125,7 @@ scnImpl::~scnImpl()
 void scnImpl::update(float deltaTime, rdrImpl* renderer)
 {
     // HERE: Update (if needed) and display the scene
-    rdrSetTexture(renderer, texture, width, height);
+    //rdrSetTexture(renderer, texture, width, height);
 
     mat4x4 matrix = mat4::scale(scale);
     matrix = matrix * mat4::rotateX(rotateX) * mat4::rotateY(rotateY) * mat4::rotateZ(rotateZ);
@@ -128,7 +133,7 @@ void scnImpl::update(float deltaTime, rdrImpl* renderer)
     rdrSetModel(renderer, matrix.e);
 
     // Draw
-    rdrDrawQuads(renderer, vertices.data(), (int)vertices.size());
+    rdrDrawTriangles(renderer, vertices.data(), (int)vertices.size());
 
     time += deltaTime;
 }
