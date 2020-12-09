@@ -11,13 +11,14 @@ Vertex shader (For color and textures only)
 Texture rendering using UV coords  
 Perspective correction  
 Hard coded lighting (ambient & specular)  
+Vertex shader for lightning  
 
 ## WIP
 ---
 Lighting with specular values and attenuation  
+Pixel shading  
 8 lights  
 Optimisation and proper clipping  
-Vertex shader for lightning  
 Back-face culling  
 
 ## Resources
