@@ -192,6 +192,7 @@ void scnImpl::showImGuiControls()
         ImGui::ColorEdit4("Diffuse", light[index].diffuse);
         ImGui::ColorEdit4("Specular", light[index].specular);
 
+        ImGui::SliderFloat3("Attenuation", light[index].attenuation, 0.0001f, 2.f);
         ImGui::SliderFloat3("Position", light[index].position, -20.f, 20.f);
     }
 }

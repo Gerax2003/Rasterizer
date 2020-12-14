@@ -6,16 +6,16 @@ Rendering using vertices and their colors using barycentric coordinates
 Perspective with working rotations and translation matrix  
 Basic clipping  
 Camera translation/rotation (ZQSD/arrow keys for horizontal movement, Lshift and space for vertical movement)  
-Translation and rotation functions (X & Y axis)  
+Translation and rotation functions  
 Vertex shader (For color and textures only)  
 Texture rendering using UV coords  
 Perspective correction  
 Vertex shader for lightning  
-8 functionnal lights  
+8 functionnal lights with ambient and diffuse lighting and attenuation  
 
 ## WIP
 ---
-Lighting with specular values and attenuation  
+Lighting with specular values  
 Pixel shading  
 Optimisation and proper clipping  
 Back-face culling  

@@ -69,11 +69,11 @@ inline mat4x4 operator*(const mat4x4& a, const mat4x4& b)
 };
 
 inline float3 operator/(float3 v, float a) { return { v.x / a, v.y / a, v.z / a }; };
+inline float3 operator*(float3 v, float a) { return { v.x * a, v.y * a, v.z * a }; };
 inline float3 operator-(float3 v) { return { -v.x, -v.y, -v.z }; };
 inline float3 operator-(float3 v1, float3 v2) { return { v1.x - v2.x, v1.y - v2.y, v1.z - v2.z }; };
 inline float3 operator*(float3 v1, float3 v2) { return { v1.x * v2.x, v1.y * v2.y, v1.z * v2.z }; };
 inline float3 operator+(float3 v1, float3 v2) { return { v1.x + v2.x, v1.y + v2.y, v1.z + v2.z }; };
-inline float3 operator*(float3 v, float a) { return { v.x * a, v.y * a, v.z * a }; };
 
 inline float4 operator*(float4 v, float a){ return { v.x * a, v.y * a, v.z * a, v.w * a }; };
 inline float4 operator+(float4 a, float4 b) { return { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w }; };

@@ -308,16 +308,20 @@ float4 vertexShader(Uniforms uniforms, rdrVertex vertex, Varying& variables)
         for (int i = 0; i < 8; i++)
             if (uniforms.lights[i].enabled)
             {
-                float3 la = uniforms.lights[i].ambient.xyz; //ambient light
-                float3 ld = uniforms.lights[i].diffuse.xyz; //diffuse light
+                if (uniforms.lights[i].attenuation.x == 0 && uniforms.lights[i].attenuation.y == 0 && uniforms.lights[i].attenuation.z == 0)
+                    uniforms.lights[i].attenuation.x = 0.00001f;
+
+                float squaredDistance = v3::squaredLengthV3(uniforms.lights[i].position.xyz - worldCoords4.xyz);
+                float attenuation = 1 / (uniforms.lights[i].attenuation.x + uniforms.lights[i].attenuation.y * sqrt(squaredDistance) + uniforms.lights[i].attenuation.z * squaredDistance);
+                
+                float3 la = uniforms.lights[i].ambient.xyz * attenuation; //ambient light
+                float3 ld = uniforms.lights[i].diffuse.xyz * attenuation; //diffuse light
                 //float4 cameraPos = uniforms.view * float4(0.f, 0.f, 0.f, 1.f);
 
                 float3 l = v3::unitVector3(uniforms.lights[i].position.xyz - worldCoords4.xyz);
 
                 ambiantColor = ambiantColor + la;
                 diffuseColor = diffuseColor + kd * getDiffuseFactor(l, worldNormalPos.xyz) * ld;
-
-                
             }
 
         float3 shadedColor = diffuseColor + ambiantColor;
