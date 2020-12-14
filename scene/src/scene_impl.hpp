@@ -22,6 +22,8 @@ private:
     int width;
     int height;
 
+    rdrLight light[8];
+
     float scale = 1.f;
     float rotateX = 0.f;
     float rotateY = 0.f;

@@ -4,8 +4,6 @@
 
 #include <common/types.hpp>
 
-static float3 lightPos = { 2.f, 10.f, 4.f };
-
 struct Viewport
 {
     int x;

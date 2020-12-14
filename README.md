@@ -10,14 +10,13 @@ Translation and rotation functions (X & Y axis)
 Vertex shader (For color and textures only)  
 Texture rendering using UV coords  
 Perspective correction  
-Hard coded lighting (ambient & specular)  
 Vertex shader for lightning  
+8 functionnal lights  
 
 ## WIP
 ---
 Lighting with specular values and attenuation  
 Pixel shading  
-8 lights  
 Optimisation and proper clipping  
 Back-face culling  
 

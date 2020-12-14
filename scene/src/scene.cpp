@@ -97,7 +97,7 @@ void loadObj(char const* inputfile, std::vector<rdrVertex>& vertices)
 
 scnImpl::scnImpl()
 {
-    loadObj("assets/Tests/boat_large.obj", vertices);
+    loadObj("assets/Tests/ball.obj", vertices);
     stbi_ldr_to_hdr_gamma(1.0f);
     texture = stbi_loadf("assets/Tests/minitest.png", &width, &height, nullptr, STBI_rgb_alpha);
 
@@ -115,6 +115,35 @@ scnImpl::scnImpl()
         { 1.0f,-1.0f, 0.0f,      0.0f,-1.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 1.0f },
         {-1.0f,-1.0f, 0.0f,      0.0f,-1.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 1.0f },
     };*/
+
+    for (int i = 0; i < 8; i++)
+    {
+        light[i].enabled = false;
+
+        light[i].ambient[0] = 0.2f;
+        light[i].ambient[1] = 0.0f;
+        light[i].ambient[2] = 0.0f;
+        light[i].ambient[3] = 0.0f;
+
+        light[i].position[0] = 0.0f;
+        light[i].position[1] = 0.0f;
+        light[i].position[2] = 0.0f;
+        light[i].position[3] = 0.0f;
+
+        light[i].diffuse[0] = 1.0f;
+        light[i].diffuse[1] = 1.0f;
+        light[i].diffuse[2] = 1.0f;
+        light[i].diffuse[3] = 1.0f;
+
+        light[i].specular[0] = 1.0f;
+        light[i].specular[1] = 1.0f;
+        light[i].specular[2] = 1.0f;
+        light[i].specular[3] = 1.0f;
+
+        light[i].attenuation[0] = 1.0f;
+        light[i].attenuation[1] = 1.0f;
+        light[i].attenuation[2] = 1.0f;
+    } 
 }
 
 scnImpl::~scnImpl()
@@ -126,6 +155,9 @@ void scnImpl::update(float deltaTime, rdrImpl* renderer)
 {
     // HERE: Update (if needed) and display the scene
     //rdrSetTexture(renderer, texture, width, height);
+
+    for (int i = 0; i < 8; i++)
+        rdrSetUniformLight(renderer, i, &light[i]);
 
     mat4x4 matrix = mat4::scale(scale);
     matrix = matrix * mat4::rotateX(rotateX) * mat4::rotateY(rotateY) * mat4::rotateZ(rotateZ);
@@ -144,4 +176,22 @@ void scnImpl::showImGuiControls()
     ImGui::SliderFloat("Rotation x", &rotateX, 0.f, 3.1415f);
     ImGui::SliderFloat("Rotation y", &rotateY, 0.f, 3.1415f);
     ImGui::SliderFloat("Rotation z", &rotateZ, 0.f, 3.1415f);
+
+    float FPS = 1 / ImGui::GetIO().DeltaTime;
+    ImGui::Text("Scene data:");
+    ImGui::Text(" -Frame per second = %5.2f", FPS);
+    ImGui::Text(" -Vertices = %i", vertices.size());
+
+    static int index = 0;
+    ImGui::SliderInt("Light number", &index, 0, 7);
+    ImGui::Checkbox("Enable light", &light[index].enabled);
+
+    if (light[index].enabled)
+    {
+        ImGui::ColorEdit4("Ambient", light[index].ambient);
+        ImGui::ColorEdit4("Diffuse", light[index].diffuse);
+        ImGui::ColorEdit4("Specular", light[index].specular);
+
+        ImGui::SliderFloat3("Position", light[index].position, -20.f, 20.f);
+    }
 }

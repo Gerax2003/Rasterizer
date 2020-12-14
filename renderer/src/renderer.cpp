@@ -28,40 +28,13 @@ void rdrShutdown(rdrImpl* renderer)
     delete renderer;
 }
 
-void rdrSetProjection(rdrImpl* renderer, float* projectionMatrix)
-{
-    memcpy(renderer->uniforms.proj.e, projectionMatrix, 16 * sizeof(float));
-}
-
-void rdrSetView(rdrImpl* renderer, float* viewMatrix)
-{
-    memcpy(renderer->uniforms.view.e, viewMatrix, 16 * sizeof(float));
-}
-
-void rdrSetModel(rdrImpl* renderer, float* modelMatrix)
-{
-    memcpy(renderer->uniforms.model.e, modelMatrix, 16 * sizeof(float));
-}
-
 void rdrSetViewport(rdrImpl* renderer, int x, int y, int width, int height)
 {
     Viewport viewport = { x, y, width, height };
     renderer->viewport = viewport;
 }
 
-void rdrSetTexture(rdrImpl* renderer, float* colors32Bits, int width, int height)
-{
-    renderer->uniforms.texture = { colors32Bits, width, height };
-}
-
-void rdrSetUniformMaterial(rdrImpl* renderer, rdrMaterial* material)
-{
-    if (material == nullptr)
-        return;
-
-    memcpy(&renderer->uniforms.material, material, sizeof(rdrMaterial));
-}
-
+#pragma region 2D DRAWING FUNCTIONS
 void drawPixel(float4* colorBuffer, int width, int height, int x, int y, float4 color)
 {
     if (x < 0 || x >= width || y < 0 || y >= height)
@@ -90,24 +63,10 @@ void drawLine(const Framebuffer& fb, float3 p0, float3 p1, float4 color)
 {
     drawLine(fb.colorBuffer, fb.width, fb.height, (int)roundf(p0.x), (int)roundf(p0.y), (int)roundf(p1.x), (int)roundf(p1.y), color);
 }
+#pragma endregion
 
-float3 getBarycentricCoordinates(float4* points, float3 point)
-{
-    float barycenterDivide = (points[1].y - points[2].y) * (points[0].x - points[2].x) + (points[2].x - points[1].x) * (points[0].y - points[2].y);
-
-    float lambda0 = ((points[1].y - points[2].y) * (point.x - points[2].x) + (points[2].x - points[1].x) * (point.y - points[2].y)) / barycenterDivide;
-    float lambda1 = ((points[2].y - points[0].y) * (point.x - points[2].x) + (points[0].x - points[2].x) * (point.y - points[2].y)) / barycenterDivide;
-    float lambda2 = 1 - lambda0 - lambda1;
-
-    float perspCorrection = lambda0 * points[0].w + lambda1 * points[1].w + lambda2 * points[2].w;
-
-    lambda0 = (lambda0 * points[0].w) / perspCorrection;
-    lambda1 = (lambda1 * points[1].w) / perspCorrection;
-    lambda2 = (lambda2 * points[2].w) / perspCorrection;
-
-    return { lambda0, lambda1, lambda2 };
-}
-
+#pragma region RASTERIZATION
+#pragma region SCREEN BOX
 int getLeftPoint(float4* points)
 {
     int retNum = INT_MAX;
@@ -160,6 +119,50 @@ float4 getBoundingBox(float4* points)
     float4 retBox = { (float)leftPoint, (float)topPoint, (float)width, (float)height };
     return retBox;
 }
+#pragma endregion
+
+#pragma region TESTS
+bool depthTest(float3& point, Framebuffer& buffer)
+{
+    if (point.x < 0 || point.x >= buffer.width || point.y < 0 || point.y >= buffer.height)
+        return false;
+
+    int index = point.x + (point.y * buffer.width);
+
+    if (point.z > buffer.depthBuffer[index])
+    {
+        buffer.depthBuffer[index] = point.z;
+        return true;
+    }
+    else
+        return false;
+}
+
+bool checkBaryCoords(float3& baryCoords)
+{
+    if (baryCoords.x >= 0 && baryCoords.y >= 0 && baryCoords.z >= 0 && baryCoords.x <= 1 && baryCoords.y <= 1 && baryCoords.z <= 1)
+        return true;
+    else
+        return false;
+}
+#pragma endregion
+
+float3 getBarycentricCoordinates(float4* points, float3 point)
+{
+    float barycenterDivide = (points[1].y - points[2].y) * (points[0].x - points[2].x) + (points[2].x - points[1].x) * (points[0].y - points[2].y);
+
+    float lambda0 = ((points[1].y - points[2].y) * (point.x - points[2].x) + (points[2].x - points[1].x) * (point.y - points[2].y)) / barycenterDivide;
+    float lambda1 = ((points[2].y - points[0].y) * (point.x - points[2].x) + (points[0].x - points[2].x) * (point.y - points[2].y)) / barycenterDivide;
+    float lambda2 = 1 - lambda0 - lambda1;
+
+    float perspCorrection = lambda0 * points[0].w + lambda1 * points[1].w + lambda2 * points[2].w;
+
+    lambda0 = (lambda0 * points[0].w) / perspCorrection;
+    lambda1 = (lambda1 * points[1].w) / perspCorrection;
+    lambda2 = (lambda2 * points[2].w) / perspCorrection;
+
+    return { lambda0, lambda1, lambda2 };
+}
 
 float4 getBaryColor(float4* colors, float3 baryCoords)
 {
@@ -195,30 +198,6 @@ Varying getVariables(Varying* variables, float3 baryCoords)
     return retVars;
 }
 
-bool depthTest(float3& point, Framebuffer& buffer)
-{
-    if (point.x < 0 || point.x >= buffer.width || point.y < 0 || point.y >= buffer.height)
-        return false;
-
-    int index = point.x + (point.y * buffer.width);
-
-    if (point.z > buffer.depthBuffer[index])
-    {
-        buffer.depthBuffer[index] = point.z;
-        return true;
-    }
-    else
-        return false;
-}
-
-bool checkBaryCoords(float3& baryCoords)
-{
-    if (baryCoords.x >= 0 && baryCoords.y >= 0 && baryCoords.z >= 0 && baryCoords.x <= 1 && baryCoords.y <= 1 && baryCoords.z <= 1)
-        return true;
-    else
-        return false;
-}
-
 float4 pixelShader(Uniforms uniforms, Varying var)
 {
     //float3 l = v3::unitVector3(lightPos - var.worldPos);
@@ -235,10 +214,10 @@ float4 getColor(Varying& pixelVariables, rdrImpl* renderer)
 
     int index = (texY * renderer->uniforms.texture.texWidth + texX) * 4;
 
-    float r = pixelVariables.color.r * renderer->uniforms.texture.texture[index + 0];// *pixelVariables.light
-    float g = pixelVariables.color.g * renderer->uniforms.texture.texture[index + 1];// *pixelVariables.light
-    float b = pixelVariables.color.b * renderer->uniforms.texture.texture[index + 2];// *pixelVariables.light
-    float a = pixelVariables.color.a * renderer->uniforms.texture.texture[index + 3];// * pixelVariables.light
+    float r = pixelVariables.color.r * renderer->uniforms.texture.texture[index + 0];
+    float g = pixelVariables.color.g * renderer->uniforms.texture.texture[index + 1];
+    float b = pixelVariables.color.b * renderer->uniforms.texture.texture[index + 2];
+    float a = pixelVariables.color.a * renderer->uniforms.texture.texture[index + 3];
 
     return { r, g, b, a };
 }
@@ -262,7 +241,9 @@ void fillTriangle(rdrImpl* renderer, float4* points, Varying* variables)
             }
         }
 }
+#pragma endregion
 
+#pragma region TRIANGLE DRAWING
 float4 ndcToScreenCoords(float4 ndc, const Viewport& viewport)
 {
     return
@@ -316,24 +297,35 @@ float4 vertexShader(Uniforms uniforms, rdrVertex vertex, Varying& variables)
     float3 localNormalPos = { vertex.nx, vertex.ny, vertex.nz };
     float4 worldNormalPos = uniforms.model * float4{ localNormalPos, 0.f };
     float4 worldCoords4 = uniforms.model * float4{ vertex.x, vertex.y, vertex.z, 1.f };
+    float4 clipCoords = uniforms.viewProj * worldCoords4;
 
     if (uniforms.gouraud == true)
     {
-        // Test
-        float3 la = { 0.2f, 0.f, 0.f }; //ambient light
-        float3 kd = { 1.f, 1.f, 1.f }; //diffuse coefficient
-        float3 ld = { 1.f, 1.f, 1.f }; //diffuse light
+        float3 kd = { 1.f, 1.f, 1.f };
+        float3 ambiantColor = {};
+        float3 diffuseColor = {};
 
-        float4 clipCoords = uniforms.viewProj * worldCoords4;
+        for (int i = 0; i < 8; i++)
+            if (uniforms.lights[i].enabled)
+            {
+                float3 la = uniforms.lights[i].ambient.xyz; //ambient light
+                float3 ld = uniforms.lights[i].diffuse.xyz; //diffuse light
+                //float4 cameraPos = uniforms.view * float4(0.f, 0.f, 0.f, 1.f);
 
-        //float4 cameraPos = uniforms.view * float4(0.f, 0.f, 0.f, 1.f);
+                float3 l = v3::unitVector3(uniforms.lights[i].position.xyz - worldCoords4.xyz);
 
-        float3 l = v3::unitVector3(lightPos - worldCoords4.xyz);
+                ambiantColor = ambiantColor + la;
+                diffuseColor = diffuseColor + kd * getDiffuseFactor(l, worldNormalPos.xyz) * ld;
 
-        float3 ambiantColor = la;
-        float3 diffuseColor = kd * getDiffuseFactor(l, worldNormalPos.xyz) * ld;
+                
+            }
+
         float3 shadedColor = diffuseColor + ambiantColor;
 
+        for (int i = 0; i < 3; i++)
+            if (shadedColor.e[i] > 1.f)
+                shadedColor.e[i] = 1.f;
+    
         variables.color = { vertex.r * shadedColor.x, vertex.g * shadedColor.y, vertex.b * shadedColor.z, vertex.a };
     }
     else
@@ -344,7 +336,7 @@ float4 vertexShader(Uniforms uniforms, rdrVertex vertex, Varying& variables)
     variables.v = vertex.v;
     variables.worldPos = worldCoords4;
 
-    return { uniforms.modelViewProj * float4{vertex.x, vertex.y, vertex.z, 1.f} };
+    return { uniforms.viewProj * worldCoords4 };
 }
 
 void drawTriangle(rdrImpl* renderer, rdrVertex* vertices)
@@ -358,7 +350,7 @@ void drawTriangle(rdrImpl* renderer, rdrVertex* vertices)
         { vertexShader(renderer->uniforms, vertices[2], variables[2]) },
     };
 
-    float3 faceNormal = getFaceNormal(vertices);
+    float3 faceNormal = getFaceNormal(vertices); // TODO: use this for back face culling
 
     if (clipping(clipCoords[0]) || clipping(clipCoords[1]) || clipping(clipCoords[2]))
         return;
@@ -385,10 +377,13 @@ void drawTriangle(rdrImpl* renderer, rdrVertex* vertices)
     // Rasterize
     fillTriangle(renderer, screenCoords, variables);
 }
+#pragma endregion
 
+#pragma region 3D DRAWING FUNCTIONS
 void rdrDrawTriangles(rdrImpl* renderer, rdrVertex* vertices, int count)
 {
     renderer->uniforms.modelViewProj = renderer->uniforms.proj * renderer->uniforms.model * renderer->uniforms.view;
+    renderer->uniforms.viewProj =  renderer->uniforms.proj * renderer->uniforms.view;
     // Transform vertex list to triangles into colorBuffer
     for (int i = 0; i < count; i += 3)
     {
@@ -408,7 +403,9 @@ void rdrDrawQuads(rdrImpl* renderer, rdrVertex* vertices, int vertexCount)
         drawTriangle(renderer, tempVertices);
     }
 }
+#pragma endregion
 
+#pragma region UNIFORMS
 void rdrSetUniformFloatV(rdrImpl* renderer, rdrUniformType type, float* value)
 {
     switch (type)
@@ -436,6 +433,36 @@ void rdrSetUniformLight(rdrImpl* renderer, int index, rdrLight* light)
     memcpy(&renderer->uniforms.lights[index], light, sizeof(rdrLight));
 }
 
+void rdrSetTexture(rdrImpl* renderer, float* colors32Bits, int width, int height)
+{
+    renderer->uniforms.texture = { colors32Bits, width, height };
+}
+
+void rdrSetUniformMaterial(rdrImpl* renderer, rdrMaterial* material)
+{
+    if (material == nullptr)
+        return;
+
+    memcpy(&renderer->uniforms.material, material, sizeof(rdrMaterial));
+}
+
+void rdrSetProjection(rdrImpl* renderer, float* projectionMatrix)
+{
+    memcpy(renderer->uniforms.proj.e, projectionMatrix, 16 * sizeof(float));
+}
+
+void rdrSetView(rdrImpl* renderer, float* viewMatrix)
+{
+    memcpy(renderer->uniforms.view.e, viewMatrix, 16 * sizeof(float));
+}
+
+void rdrSetModel(rdrImpl* renderer, float* modelMatrix)
+{
+    memcpy(renderer->uniforms.model.e, modelMatrix, 16 * sizeof(float));
+}
+#pragma endregion
+
+#pragma region IMGUI
 void rdrSetImGuiContext(rdrImpl* renderer, struct ImGuiContext* context)
 {
     ImGui::SetCurrentContext(context);
@@ -464,9 +491,6 @@ void rdrShowImGuiControls(rdrImpl* renderer)
     if (showModel)
         showMatrix(renderer->uniforms.model, "model");
 
-    float FPS = 1 / ImGui::GetIO().DeltaTime;
-    ImGui::Text("Frame per second = %5.2f", FPS);
-    ImGui::SliderFloat3("LightPos", lightPos.e, -10, 10);
-
     ImGui::Checkbox("Gouraud shading", &renderer->uniforms.gouraud);
 }
+#pragma endregion
