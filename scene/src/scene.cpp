@@ -38,7 +38,7 @@ void scnShowImGuiControls(scnImpl* scene)
     scene->showImGuiControls();
 }
 
-void loadObj(char const* inputfile, std::vector<rdrVertex>& vertices)
+void loadObj(char const* inputfile, std::vector<rdrVertex>& vertices, float scale)
 {
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
@@ -72,9 +72,9 @@ void loadObj(char const* inputfile, std::vector<rdrVertex>& vertices)
                 tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
 
                 rdrVertex vertex = {};
-                vertex.x = attrib.vertices[3.f * idx.vertex_index + 0.f];
-                vertex.y = attrib.vertices[3.f * idx.vertex_index + 1.f];
-                vertex.z = attrib.vertices[3.f * idx.vertex_index + 2.f];
+                vertex.x = attrib.vertices[3.f * idx.vertex_index + 0.f] * scale;
+                vertex.y = attrib.vertices[3.f * idx.vertex_index + 1.f] * scale;
+                vertex.z = attrib.vertices[3.f * idx.vertex_index + 2.f] * scale;
                 vertex.nx = attrib.normals[3.f * idx.normal_index + 0.f];
                 vertex.ny = attrib.normals[3.f * idx.normal_index + 1.f];
                 vertex.nz = attrib.normals[3.f * idx.normal_index + 2.f];
@@ -97,7 +97,7 @@ void loadObj(char const* inputfile, std::vector<rdrVertex>& vertices)
 
 scnImpl::scnImpl()
 {
-    loadObj("assets/Tests/ball.obj", vertices);
+    loadObj("assets/Tests/ball.obj", vertices, 3.0f);
     stbi_ldr_to_hdr_gamma(1.0f);
     texture = stbi_loadf("assets/Tests/minitest.png", &width, &height, nullptr, STBI_rgb_alpha);
 
@@ -161,10 +161,14 @@ void scnImpl::update(float deltaTime, rdrImpl* renderer)
 
     mat4x4 matrix = mat4::scale(scale);
     matrix = matrix * mat4::rotateX(rotateX) * mat4::rotateY(rotateY) * mat4::rotateZ(rotateZ);
-
+    matrix = matrix * mat4::translate({ 0.1f * sinf(time), 0.f, 0.f });
     rdrSetModel(renderer, matrix.e);
 
-    // Draw
+    rdrDrawTriangles(renderer, vertices.data(), (int)vertices.size());
+
+    matrix = matrix * mat4::translate({ 3.f, 2.f * cosf(time), -0.5f }) * mat4::scale(1.2f);
+    rdrSetModel(renderer, matrix.e);
+
     rdrDrawTriangles(renderer, vertices.data(), (int)vertices.size());
 
     time += deltaTime;

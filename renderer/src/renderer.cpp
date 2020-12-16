@@ -65,6 +65,18 @@ void drawLine(const Framebuffer& fb, float3 p0, float3 p1, float4 color)
 }
 #pragma endregion
 
+#pragma region LIGHT FACTORS
+float getDiffuseFactor(float3 lightDir, float3 normal)
+{
+    return v3::dotProductVector3(lightDir, normal);
+}
+
+float getSpecularFactor(float3 lightDir, float3 normal)
+{
+    return 0.f;
+}
+#pragma endregion
+
 #pragma region RASTERIZATION
 #pragma region SCREEN BOX
 int getLeftPoint(float4* points)
@@ -174,6 +186,16 @@ float4 getBaryColor(float4* colors, float3 baryCoords)
     return { r, g, b, a };
 }
 
+float4 getWorldPos(Varying* variables, float3 baryCoords)
+{
+    float x = baryCoords.x * variables[0].worldPos.x + baryCoords.y * variables[1].worldPos.x + baryCoords.z * variables[2].worldPos.x;
+    float y = baryCoords.x * variables[0].worldPos.y + baryCoords.y * variables[1].worldPos.y + baryCoords.z * variables[2].worldPos.y;
+    float z = baryCoords.x * variables[0].worldPos.z + baryCoords.y * variables[1].worldPos.z + baryCoords.z * variables[2].worldPos.z;
+    float w = baryCoords.x * variables[0].worldPos.w + baryCoords.y * variables[1].worldPos.w + baryCoords.z * variables[2].worldPos.w;
+
+    return { x, y, z, w };
+}
+
 float3 getNormals(Varying* variables, float3 baryCoords)
 {
     float nx = baryCoords.x * variables[0].normals.x + baryCoords.y * variables[1].normals.x + baryCoords.z * variables[2].normals.x;
@@ -183,31 +205,58 @@ float3 getNormals(Varying* variables, float3 baryCoords)
     return { nx, ny, nz };
 }
 
-Varying getVariables(Varying* variables, float3 baryCoords)
+float3 pixelShader(Uniforms uniforms, Varying var)
+{
+    float3 kd = { 1.f, 1.f, 1.f };
+    float3 ambiantColor = {};
+    float3 diffuseColor = {};
+
+    for (int i = 0; i < 8; i++)
+        if (uniforms.lights[i].enabled)
+        {
+            float squaredDistance = v3::squaredLengthV3(uniforms.lights[i].position.xyz - var.worldPos.xyz);
+            float attenuation = 1 / (uniforms.lights[i].attenuation.x + uniforms.lights[i].attenuation.y * sqrt(squaredDistance) + uniforms.lights[i].attenuation.z * squaredDistance);
+
+            float3 la = uniforms.lights[i].ambient.xyz *attenuation; //ambient light
+            float3 ld = uniforms.lights[i].diffuse.xyz *attenuation; //diffuse light
+
+            float3 l = v3::unitVector3(uniforms.lights[i].position.xyz - var.worldPos.xyz);
+
+            ambiantColor = ambiantColor + la;
+            diffuseColor = diffuseColor + kd * getDiffuseFactor(l, var.worldPos.xyz) * ld;
+        }
+
+    float3 shadedColor = diffuseColor + ambiantColor;
+
+    for (int i = 0; i < 3; i++)
+        if (shadedColor.e[i] > 1.f)
+            shadedColor.e[i] = 1.f;
+
+    return shadedColor;
+}
+
+Varying getVariables(Varying* variables, float3 baryCoords, Uniforms uniforms)
 {
     Varying retVars = {};
     float4 colors[3] = { variables[0].color, variables[1].color, variables[2].color };
     retVars.color = getBaryColor(colors, baryCoords);
+    retVars.worldPos = getWorldPos(variables, baryCoords);
 
     retVars.normals = getNormals(variables, baryCoords);
     
+    if (uniforms.pixel)
+        retVars.color.xyz = retVars.color.xyz * pixelShader(uniforms, retVars);
+
     retVars.u = baryCoords.x * variables[0].u + baryCoords.y * variables[1].u + baryCoords.z * variables[2].u;
     retVars.v = baryCoords.x * variables[0].v + baryCoords.y * variables[1].v + baryCoords.z * variables[2].v;
-
 
     return retVars;
 }
 
-float4 pixelShader(Uniforms uniforms, Varying var)
-{
-    //float3 l = v3::unitVector3(lightPos - var.worldPos);
-    return { 1.f, 1.f, 1.f, 1.f };
-}
-
-float4 getColor(Varying& pixelVariables, rdrImpl* renderer)
+float4 getTexColor(Varying& pixelVariables, rdrImpl* renderer)
 {
     if (renderer->uniforms.texture.texWidth <= 0 || renderer->uniforms.texture.texHeight <= 0 || renderer->uniforms.texture.texture == nullptr)
-        return pixelVariables.color; //* pixelVariables.light;
+        return pixelVariables.color;
 
     int texX = (int)(pixelVariables.u * renderer->uniforms.texture.texWidth) % renderer->uniforms.texture.texWidth;
     int texY = renderer->uniforms.texture.texHeight - 1 - ((int)(pixelVariables.v * renderer->uniforms.texture.texHeight) % renderer->uniforms.texture.texHeight);
@@ -222,7 +271,7 @@ float4 getColor(Varying& pixelVariables, rdrImpl* renderer)
     return { r, g, b, a };
 }
 
-void fillTriangle(rdrImpl* renderer, float4* points, Varying* variables)
+void fillTriangle(rdrImpl* renderer, float4* points, Varying* variables, Uniforms uniforms)
 {
     float4 box = getBoundingBox(points);
     
@@ -235,8 +284,8 @@ void fillTriangle(rdrImpl* renderer, float4* points, Varying* variables)
 
             if (checkBaryCoords(baryCoords) && depthTest(pixel, renderer->fb))
             {
-                Varying pixelVariables = getVariables(variables, baryCoords);
-                float4 color = getColor(pixelVariables, renderer);
+                Varying pixelVariables = getVariables(variables, baryCoords, uniforms);
+                float4 color = getTexColor(pixelVariables, renderer);
                 drawPixel(renderer->fb.colorBuffer, renderer->fb.width, renderer->fb.height, x, y, color);
             }
         }
@@ -282,22 +331,11 @@ float3 getFaceNormal(rdrVertex* vertex)
     return v3::unitVector3(v3::cross(vec1, vec2));
 }
 
-float getDiffuseFactor(float3 lightDir, float3 normal)
-{
-    return v3::dotProductVector3(lightDir, normal);
-}
-
-float getSpecularFactor(float3 lightDir, float3 normal)
-{
-    return 0.f;
-}
-
 float4 vertexShader(Uniforms uniforms, rdrVertex vertex, Varying& variables)
 {
     float3 localNormalPos = { vertex.nx, vertex.ny, vertex.nz };
     float4 worldNormalPos = uniforms.model * float4{ localNormalPos, 0.f };
     float4 worldCoords4 = uniforms.model * float4{ vertex.x, vertex.y, vertex.z, 1.f };
-    float4 clipCoords = uniforms.viewProj * worldCoords4;
 
     if (uniforms.gouraud == true)
     {
@@ -308,9 +346,6 @@ float4 vertexShader(Uniforms uniforms, rdrVertex vertex, Varying& variables)
         for (int i = 0; i < 8; i++)
             if (uniforms.lights[i].enabled)
             {
-                if (uniforms.lights[i].attenuation.x == 0 && uniforms.lights[i].attenuation.y == 0 && uniforms.lights[i].attenuation.z == 0)
-                    uniforms.lights[i].attenuation.x = 0.00001f;
-
                 float squaredDistance = v3::squaredLengthV3(uniforms.lights[i].position.xyz - worldCoords4.xyz);
                 float attenuation = 1 / (uniforms.lights[i].attenuation.x + uniforms.lights[i].attenuation.y * sqrt(squaredDistance) + uniforms.lights[i].attenuation.z * squaredDistance);
                 
@@ -373,13 +408,14 @@ void drawTriangle(rdrImpl* renderer, rdrVertex* vertices)
         { ndcToScreenCoords(ndcCoords[2], renderer->viewport) },
     };
 
-    // Wireframe
-    /*drawLine(renderer->fb, screenCoords[0], screenCoords[1], renderer->lineColor);
-    drawLine(renderer->fb, screenCoords[1], screenCoords[2], renderer->lineColor);
-    drawLine(renderer->fb, screenCoords[2], screenCoords[0], renderer->lineColor);*/
-
-    // Rasterize
-    fillTriangle(renderer, screenCoords, variables);
+    if (renderer->uniforms.wireframe)
+    {
+        drawLine(renderer->fb, screenCoords[0].xyz, screenCoords[1].xyz, renderer->lineColor);
+        drawLine(renderer->fb, screenCoords[1].xyz, screenCoords[2].xyz, renderer->lineColor);
+        drawLine(renderer->fb, screenCoords[2].xyz, screenCoords[0].xyz, renderer->lineColor);
+    }
+    else
+        fillTriangle(renderer, screenCoords, variables, renderer->uniforms);
 }
 #pragma endregion
 
@@ -425,6 +461,8 @@ void rdrSetUniformBoolV(rdrImpl* renderer, rdrUniformType type, bool value)
     switch (type)
     {
     case UT_GOURAUD: renderer->uniforms.gouraud = value; break;
+    case UT_PIXEL: renderer->uniforms.pixel = value; break;
+    case UT_WIREFRAME: renderer->uniforms.wireframe = value; break;
     default:;
     }
 }
@@ -487,6 +525,11 @@ void rdrShowImGuiControls(rdrImpl* renderer)
 
     static bool showMVP = false;
     static bool showModel = false;
+
+    ImGui::Checkbox("Gouraud shading", &renderer->uniforms.gouraud);
+    ImGui::Checkbox("Pixel shading", &renderer->uniforms.pixel);
+    ImGui::Checkbox("Wireframe shading", &renderer->uniforms.wireframe);
+
     ImGui::Checkbox("Show ModelViewProj", &showMVP);
     ImGui::Checkbox("Show Model", &showModel);
 
@@ -494,7 +537,5 @@ void rdrShowImGuiControls(rdrImpl* renderer)
         showMatrix(renderer->uniforms.modelViewProj, "mvp");
     if (showModel)
         showMatrix(renderer->uniforms.model, "model");
-
-    ImGui::Checkbox("Gouraud shading", &renderer->uniforms.gouraud);
 }
 #pragma endregion

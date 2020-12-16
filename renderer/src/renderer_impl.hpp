@@ -66,11 +66,15 @@ struct Uniforms
     Texture texture;
     Light lights[8];
     Material material;
+
+    float3 camPos;
     
     float time;
     float deltaTime;
 
     bool gouraud = true;
+    bool pixel = false;
+    bool wireframe = false;
 };
 
 struct rdrImpl

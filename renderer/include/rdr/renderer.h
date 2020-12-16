@@ -49,6 +49,8 @@ enum rdrUniformType
 
     UT_USER = 100,
     UT_GOURAUD,
+    UT_PIXEL,
+    UT_WIREFRAME,
 };
 
 
