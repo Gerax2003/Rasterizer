@@ -75,6 +75,7 @@ struct Uniforms
     bool gouraud = true;
     bool pixel = false;
     bool wireframe = false;
+    bool showTextures = false;
 };
 
 struct rdrImpl

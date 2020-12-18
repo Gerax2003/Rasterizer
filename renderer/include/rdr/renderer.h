@@ -51,6 +51,7 @@ enum rdrUniformType
     UT_GOURAUD,
     UT_PIXEL,
     UT_WIREFRAME,
+    UT_TEXTURE,
 };
 
 

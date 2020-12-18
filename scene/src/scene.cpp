@@ -153,8 +153,7 @@ scnImpl::~scnImpl()
 
 void scnImpl::update(float deltaTime, rdrImpl* renderer)
 {
-    // HERE: Update (if needed) and display the scene
-    //rdrSetTexture(renderer, texture, width, height);
+    rdrSetTexture(renderer, texture, width, height);
 
     for (int i = 0; i < 8; i++)
         rdrSetUniformLight(renderer, i, &light[i]);

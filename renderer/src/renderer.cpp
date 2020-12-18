@@ -202,7 +202,8 @@ float3 getNormals(Varying* variables, float3 baryCoords)
     float ny = baryCoords.x * variables[0].normals.y + baryCoords.y * variables[1].normals.y + baryCoords.z * variables[2].normals.y;
     float nz = baryCoords.x * variables[0].normals.z + baryCoords.y * variables[1].normals.z + baryCoords.z * variables[2].normals.z;
 
-    return { nx, ny, nz };
+    float3 normal = v3::unitVector3({ nx, ny, nz });
+    return normal;
 }
 
 float3 pixelShader(Uniforms uniforms, Varying var)
@@ -217,13 +218,13 @@ float3 pixelShader(Uniforms uniforms, Varying var)
             float squaredDistance = v3::squaredLengthV3(uniforms.lights[i].position.xyz - var.worldPos.xyz);
             float attenuation = 1 / (uniforms.lights[i].attenuation.x + uniforms.lights[i].attenuation.y * sqrt(squaredDistance) + uniforms.lights[i].attenuation.z * squaredDistance);
 
-            float3 la = uniforms.lights[i].ambient.xyz *attenuation; //ambient light
-            float3 ld = uniforms.lights[i].diffuse.xyz *attenuation; //diffuse light
+            float3 la = uniforms.lights[i].ambient.xyz * attenuation; //ambient color
+            float3 ld = uniforms.lights[i].diffuse.xyz * attenuation; //diffuse color
 
             float3 l = v3::unitVector3(uniforms.lights[i].position.xyz - var.worldPos.xyz);
 
             ambiantColor = ambiantColor + la;
-            diffuseColor = diffuseColor + kd * getDiffuseFactor(l, var.worldPos.xyz) * ld;
+            diffuseColor = diffuseColor + kd * getDiffuseFactor(l, var.normals) * ld;
         }
 
     float3 shadedColor = diffuseColor + ambiantColor;
@@ -253,25 +254,25 @@ Varying getVariables(Varying* variables, float3 baryCoords, Uniforms uniforms)
     return retVars;
 }
 
-float4 getTexColor(Varying& pixelVariables, rdrImpl* renderer)
+float4 getTexColor(Varying& pixelVariables, Uniforms& uniforms)
 {
-    if (renderer->uniforms.texture.texWidth <= 0 || renderer->uniforms.texture.texHeight <= 0 || renderer->uniforms.texture.texture == nullptr)
+    if (uniforms.texture.texWidth <= 0 || uniforms.texture.texHeight <= 0 || uniforms.texture.texture == nullptr || uniforms.showTextures == false)
         return pixelVariables.color;
 
-    int texX = (int)(pixelVariables.u * renderer->uniforms.texture.texWidth) % renderer->uniforms.texture.texWidth;
-    int texY = renderer->uniforms.texture.texHeight - 1 - ((int)(pixelVariables.v * renderer->uniforms.texture.texHeight) % renderer->uniforms.texture.texHeight);
+    int texX = (int)(pixelVariables.u * uniforms.texture.texWidth) % uniforms.texture.texWidth;
+    int texY = uniforms.texture.texHeight - 1 - ((int)(pixelVariables.v * uniforms.texture.texHeight) % uniforms.texture.texHeight);
 
-    int index = (texY * renderer->uniforms.texture.texWidth + texX) * 4;
+    int index = (texY * uniforms.texture.texWidth + texX) * 4;
 
-    float r = pixelVariables.color.r * renderer->uniforms.texture.texture[index + 0];
-    float g = pixelVariables.color.g * renderer->uniforms.texture.texture[index + 1];
-    float b = pixelVariables.color.b * renderer->uniforms.texture.texture[index + 2];
-    float a = pixelVariables.color.a * renderer->uniforms.texture.texture[index + 3];
+    float r = pixelVariables.color.r * uniforms.texture.texture[index + 0];
+    float g = pixelVariables.color.g * uniforms.texture.texture[index + 1];
+    float b = pixelVariables.color.b * uniforms.texture.texture[index + 2];
+    float a = pixelVariables.color.a * uniforms.texture.texture[index + 3];
 
     return { r, g, b, a };
 }
 
-void fillTriangle(rdrImpl* renderer, float4* points, Varying* variables, Uniforms uniforms)
+void fillTriangle(rdrImpl* renderer, float4* points, Varying* variables)
 {
     float4 box = getBoundingBox(points);
     
@@ -284,8 +285,8 @@ void fillTriangle(rdrImpl* renderer, float4* points, Varying* variables, Uniform
 
             if (checkBaryCoords(baryCoords) && depthTest(pixel, renderer->fb))
             {
-                Varying pixelVariables = getVariables(variables, baryCoords, uniforms);
-                float4 color = getTexColor(pixelVariables, renderer);
+                Varying pixelVariables = getVariables(variables, baryCoords, renderer->uniforms);
+                float4 color = getTexColor(pixelVariables, renderer->uniforms);
                 drawPixel(renderer->fb.colorBuffer, renderer->fb.width, renderer->fb.height, x, y, color);
             }
         }
@@ -415,7 +416,7 @@ void drawTriangle(rdrImpl* renderer, rdrVertex* vertices)
         drawLine(renderer->fb, screenCoords[2].xyz, screenCoords[0].xyz, renderer->lineColor);
     }
     else
-        fillTriangle(renderer, screenCoords, variables, renderer->uniforms);
+        fillTriangle(renderer, screenCoords, variables);
 }
 #pragma endregion
 
@@ -424,6 +425,7 @@ void rdrDrawTriangles(rdrImpl* renderer, rdrVertex* vertices, int count)
 {
     renderer->uniforms.modelViewProj = renderer->uniforms.proj * renderer->uniforms.model * renderer->uniforms.view;
     renderer->uniforms.viewProj =  renderer->uniforms.proj * renderer->uniforms.view;
+
     // Transform vertex list to triangles into colorBuffer
     for (int i = 0; i < count; i += 3)
     {
@@ -463,6 +465,7 @@ void rdrSetUniformBoolV(rdrImpl* renderer, rdrUniformType type, bool value)
     case UT_GOURAUD: renderer->uniforms.gouraud = value; break;
     case UT_PIXEL: renderer->uniforms.pixel = value; break;
     case UT_WIREFRAME: renderer->uniforms.wireframe = value; break;
+    case UT_TEXTURE: renderer->uniforms.showTextures = value; break;
     default:;
     }
 }
@@ -528,7 +531,8 @@ void rdrShowImGuiControls(rdrImpl* renderer)
 
     ImGui::Checkbox("Gouraud shading", &renderer->uniforms.gouraud);
     ImGui::Checkbox("Pixel shading", &renderer->uniforms.pixel);
-    ImGui::Checkbox("Wireframe shading", &renderer->uniforms.wireframe);
+    ImGui::Checkbox("Wireframe", &renderer->uniforms.wireframe);
+    ImGui::Checkbox("Show Textures", &renderer->uniforms.showTextures);
 
     ImGui::Checkbox("Show ModelViewProj", &showMVP);
     ImGui::Checkbox("Show Model", &showModel);

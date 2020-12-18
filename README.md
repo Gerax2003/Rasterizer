@@ -12,13 +12,20 @@ Texture rendering using UV coords
 Perspective correction  
 Vertex shader for lightning  
 8 functionnal lights with ambient and diffuse lighting and attenuation  
+Pixel shading  
 
 ## WIP
 ---
 Lighting with specular values  
-Pixel shading  
 Optimisation and proper clipping  
 Back-face culling  
+
+## External libraries
+---
+GLFW (Display in ImGui)  
+ImGui (Parameters window/display window)  
+Tinyobjloader (.obj loading)  
+stbimage (texture loading)  
 
 ## Resources
 ---
