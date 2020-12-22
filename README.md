@@ -13,12 +13,14 @@ Perspective correction
 Vertex shader for lightning  
 8 functionnal lights with ambient and diffuse lighting and attenuation  
 Pixel shading  
+Materials  
 
-## WIP
+## WIP (in priority order)
 ---
 Lighting with specular values  
-Optimisation and proper clipping  
 Back-face culling  
+Optimisation and proper clipping  
+Getting materials from TinyObjLoader  
 
 ## Interface presentation
 ---
