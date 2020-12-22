@@ -23,6 +23,7 @@ private:
     int height;
 
     rdrLight light[8];
+    rdrMaterial* material;
 
     float scale = 1.f;
     float rotateX = 0.f;

@@ -44,14 +44,16 @@ typedef struct rdrMaterial
 
 enum rdrUniformType
 {
-    UT_TIME,      // 1 float
-    UT_DELTATIME, // 1 float
+    UT_TIME,      
+    UT_DELTATIME, 
+    UT_CAMERA_POS,
 
     UT_USER = 100,
     UT_GOURAUD,
     UT_PIXEL,
     UT_WIREFRAME,
     UT_TEXTURE,
+    UT_DEPTH_BUFFER,
 };
 
 
@@ -61,6 +63,7 @@ enum rdrUniformType
 // Depth buffer is a buffer of 32bits floats
 RDR_API rdrImpl* rdrInit(float* colorBuffer32Bits, float* depthBuffer, int width, int height);
 RDR_API void rdrShutdown(rdrImpl* renderer);
+RDR_API void rdrFinish(rdrImpl* renderer);
 
 // Matrix setup
 RDR_API void rdrSetProjection(rdrImpl* renderer, float* projectionMatrix);

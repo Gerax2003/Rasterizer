@@ -72,10 +72,11 @@ struct Uniforms
     float time;
     float deltaTime;
 
-    bool gouraud = true;
+    bool gouraud = false;
     bool pixel = false;
-    bool wireframe = false;
+    bool wireframe = true;
     bool showTextures = false;
+    bool showDepthBuffer = false;
 };
 
 struct rdrImpl

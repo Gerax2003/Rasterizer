@@ -31,6 +31,6 @@ struct Camera
 
     float aspect;
     float fovY = 80;
-    float near = 0.15f;
-    float far = 75.f;
+    float near = 0.25f;
+    float far = 15.f;
 };

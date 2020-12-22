@@ -99,56 +99,52 @@ scnImpl::scnImpl()
 {
     loadObj("assets/Tests/ball.obj", vertices, 3.0f);
     stbi_ldr_to_hdr_gamma(1.0f);
-    texture = stbi_loadf("assets/Tests/minitest.png", &width, &height, nullptr, STBI_rgb_alpha);
+    texture = stbi_loadf("assets/Tests/maxitest.png", &width, &height, nullptr, STBI_rgb_alpha);
 
     printf("width = %i, height = %i\n", width, height);
-    /*
+    
     vertices = {
         //       pos                  normal                    color                   uv
         {-1.0f,-1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },
         { 1.0f,-1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 0.0f },
         { 1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 1.0f },
-        {-1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 1.0f },
 
-        {-1.0f,-1.0f,-2.0f,      0.0f,-1.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },
-        { 1.0f,-1.0f,-2.0f,      0.0f,-1.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 0.0f },
-        { 1.0f,-1.0f, 0.0f,      0.0f,-1.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 1.0f },
-        {-1.0f,-1.0f, 0.0f,      0.0f,-1.0f, 0.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 1.0f },
-    };*/
+        { 1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 1.0f },
+        {-1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 1.0f },
+        {-1.0f,-1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },
+    };
 
     for (int i = 0; i < 8; i++)
     {
         light[i].enabled = false;
 
-        light[i].ambient[0] = 0.2f;
-        light[i].ambient[1] = 0.0f;
-        light[i].ambient[2] = 0.0f;
-        light[i].ambient[3] = 0.0f;
+        for (int j = 0; j < 4; j++)
+        {
+            light[i].ambient[j] = 0.0f;
+            light[i].position[j] = 0.0f;
+            light[i].diffuse[j] = 1.0f;
+            light[i].specular[j] = 1.0f;
 
-        light[i].position[0] = 0.0f;
-        light[i].position[1] = 0.0f;
-        light[i].position[2] = 0.0f;
-        light[i].position[3] = 0.0f;
-
-        light[i].diffuse[0] = 1.0f;
-        light[i].diffuse[1] = 1.0f;
-        light[i].diffuse[2] = 1.0f;
-        light[i].diffuse[3] = 1.0f;
-
-        light[i].specular[0] = 1.0f;
-        light[i].specular[1] = 1.0f;
-        light[i].specular[2] = 1.0f;
-        light[i].specular[3] = 1.0f;
-
-        light[i].attenuation[0] = 1.0f;
-        light[i].attenuation[1] = 1.0f;
-        light[i].attenuation[2] = 1.0f;
+            if (j < 3)
+                light[i].attenuation[j] = 1.0f;
+        }
     } 
+
+    material = new rdrMaterial;
+    material->shininess = 20.f;
+
+    for (int i = 0; i < 4; i++)
+    {
+        material->ambientColor[i] = 1.0f;
+        material->emissionColor[i] = 1.0f;
+        material->diffuseColor[i] = 1.0f;
+        material->specularColor[i] = 1.0f;
+    }
 }
 
 scnImpl::~scnImpl()
 {
-    // HERE: Unload the scene
+    delete this->material;
 }
 
 void scnImpl::update(float deltaTime, rdrImpl* renderer)
@@ -157,6 +153,8 @@ void scnImpl::update(float deltaTime, rdrImpl* renderer)
 
     for (int i = 0; i < 8; i++)
         rdrSetUniformLight(renderer, i, &light[i]);
+
+    rdrSetUniformMaterial(renderer, material);
 
     mat4x4 matrix = mat4::scale(scale);
     matrix = matrix * mat4::rotateX(rotateX) * mat4::rotateY(rotateY) * mat4::rotateZ(rotateZ);
@@ -169,6 +167,8 @@ void scnImpl::update(float deltaTime, rdrImpl* renderer)
     rdrSetModel(renderer, matrix.e);
 
     rdrDrawTriangles(renderer, vertices.data(), (int)vertices.size());
+
+    rdrFinish(renderer);
 
     time += deltaTime;
 }
@@ -197,5 +197,17 @@ void scnImpl::showImGuiControls()
 
         ImGui::SliderFloat3("Attenuation", light[index].attenuation, 0.0001f, 2.f);
         ImGui::SliderFloat3("Position", light[index].position, -20.f, 20.f);
+    }
+
+    static bool modMat = false;
+    ImGui::Checkbox("Modify material", &modMat);
+
+    if (modMat)
+    {
+        ImGui::ColorEdit4("Material ambient", material->ambientColor);
+        ImGui::ColorEdit4("Material diffuse", material->diffuseColor);
+        ImGui::ColorEdit4("Material specular", material->specularColor);
+
+        ImGui::SliderFloat("Shininess", &material->shininess, 0.f, 20.f);
     }
 }

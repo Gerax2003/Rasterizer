@@ -189,6 +189,7 @@ int main(int argc, char* argv[])
 
         rdrSetUniformFloatV(renderer, UT_TIME, &time);
         rdrSetUniformFloatV(renderer, UT_DELTATIME, &deltaTime);
+        rdrSetUniformFloatV(renderer, UT_CAMERA_POS, camera.position.e);
 
         // Render scene
         scnUpdate(scene, ImGui::GetIO().DeltaTime, renderer);

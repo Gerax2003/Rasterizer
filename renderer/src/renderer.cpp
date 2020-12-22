@@ -28,6 +28,20 @@ void rdrShutdown(rdrImpl* renderer)
     delete renderer;
 }
 
+void rdrFinish(rdrImpl* renderer)
+{
+    if (renderer->uniforms.showDepthBuffer)
+        for (int i = 0; i < renderer->fb.height; i++)
+            for (int j = 0; j < renderer->fb.width; j++)
+            {
+                int index = i * renderer->fb.width + j;
+                renderer->fb.colorBuffer[index].x = renderer->fb.depthBuffer[index] * 5.f; // multiplying because it's hard to see on big models
+                renderer->fb.colorBuffer[index].y = renderer->fb.depthBuffer[index] * 5.f;
+                renderer->fb.colorBuffer[index].z = renderer->fb.depthBuffer[index] * 5.f;
+                renderer->fb.colorBuffer[index].w = 1.f;
+            }
+}
+
 void rdrSetViewport(rdrImpl* renderer, int x, int y, int width, int height)
 {
     Viewport viewport = { x, y, width, height };
@@ -71,9 +85,15 @@ float getDiffuseFactor(float3 lightDir, float3 normal)
     return v3::dotProductVector3(lightDir, normal);
 }
 
-float getSpecularFactor(float3 lightDir, float3 normal)
+float getSpecularFactor(float3 lightDir, float3 normal, float3 camPos, float3 worldPos)
 {
-    return 0.f;
+    float3 reflection = v3::unitVector3((normal * 2 * v3::dotProductVector3(lightDir, normal)) - lightDir);
+    float specFactor = v3::dotProductVector3(reflection, camPos/* - worldPos*/);
+    
+    if (specFactor >= 0)
+        return specFactor;
+    else
+        return 0;
 }
 #pragma endregion
 
@@ -208,9 +228,9 @@ float3 getNormals(Varying* variables, float3 baryCoords)
 
 float3 pixelShader(Uniforms uniforms, Varying var)
 {
-    float3 kd = { 1.f, 1.f, 1.f };
     float3 ambiantColor = {};
     float3 diffuseColor = {};
+    //float3 specularColor = {};
 
     for (int i = 0; i < 8; i++)
         if (uniforms.lights[i].enabled)
@@ -220,14 +240,16 @@ float3 pixelShader(Uniforms uniforms, Varying var)
 
             float3 la = uniforms.lights[i].ambient.xyz * attenuation; //ambient color
             float3 ld = uniforms.lights[i].diffuse.xyz * attenuation; //diffuse color
+            float3 ls = uniforms.lights[i].specular.xyz * attenuation; // specular color
 
             float3 l = v3::unitVector3(uniforms.lights[i].position.xyz - var.worldPos.xyz);
 
-            ambiantColor = ambiantColor + la;
-            diffuseColor = diffuseColor + kd * getDiffuseFactor(l, var.normals) * ld;
+            ambiantColor = ambiantColor + la * uniforms.material.ambientColor.xyz;
+            diffuseColor = diffuseColor + uniforms.material.diffuseColor.xyz * getDiffuseFactor(l, var.normals) * ld;
+            //specularColor = specularColor + uniforms.material.specularColor.xyz * powf(getSpecularFactor(l, var.normals, uniforms.camPos, var.worldPos.xyz), uniforms.material.shininess) * ls;
         }
 
-    float3 shadedColor = diffuseColor + ambiantColor;
+    float3 shadedColor = diffuseColor + ambiantColor; //+ specularColor; TODO: find out what is wrong with the specular calculations
 
     for (int i = 0; i < 3; i++)
         if (shadedColor.e[i] > 1.f)
@@ -340,9 +362,9 @@ float4 vertexShader(Uniforms uniforms, rdrVertex vertex, Varying& variables)
 
     if (uniforms.gouraud == true)
     {
-        float3 kd = { 1.f, 1.f, 1.f };
         float3 ambiantColor = {};
         float3 diffuseColor = {};
+        float3 specularColor = {};
 
         for (int i = 0; i < 8; i++)
             if (uniforms.lights[i].enabled)
@@ -356,8 +378,8 @@ float4 vertexShader(Uniforms uniforms, rdrVertex vertex, Varying& variables)
 
                 float3 l = v3::unitVector3(uniforms.lights[i].position.xyz - worldCoords4.xyz);
 
-                ambiantColor = ambiantColor + la;
-                diffuseColor = diffuseColor + kd * getDiffuseFactor(l, worldNormalPos.xyz) * ld;
+                ambiantColor = ambiantColor + la * uniforms.material.ambientColor.xyz;
+                diffuseColor = diffuseColor + uniforms.material.diffuseColor.xyz * getDiffuseFactor(l, worldNormalPos.xyz) * ld;
             }
 
         float3 shadedColor = diffuseColor + ambiantColor;
@@ -454,6 +476,7 @@ void rdrSetUniformFloatV(rdrImpl* renderer, rdrUniformType type, float* value)
     {
     case UT_TIME:      renderer->uniforms.time = value[0]; break;
     case UT_DELTATIME: renderer->uniforms.deltaTime = value[0]; break;
+    case UT_CAMERA_POS: memcpy(renderer->uniforms.camPos.e, value, sizeof(float3)); break;
     default:;
     }
 }
@@ -466,6 +489,7 @@ void rdrSetUniformBoolV(rdrImpl* renderer, rdrUniformType type, bool value)
     case UT_PIXEL: renderer->uniforms.pixel = value; break;
     case UT_WIREFRAME: renderer->uniforms.wireframe = value; break;
     case UT_TEXTURE: renderer->uniforms.showTextures = value; break;
+    case UT_DEPTH_BUFFER: renderer->uniforms.showDepthBuffer = value; break;
     default:;
     }
 }
@@ -533,6 +557,7 @@ void rdrShowImGuiControls(rdrImpl* renderer)
     ImGui::Checkbox("Pixel shading", &renderer->uniforms.pixel);
     ImGui::Checkbox("Wireframe", &renderer->uniforms.wireframe);
     ImGui::Checkbox("Show Textures", &renderer->uniforms.showTextures);
+    ImGui::Checkbox("Show Depth Buffer", &renderer->uniforms.showDepthBuffer);
 
     ImGui::Checkbox("Show ModelViewProj", &showMVP);
     ImGui::Checkbox("Show Model", &showModel);
