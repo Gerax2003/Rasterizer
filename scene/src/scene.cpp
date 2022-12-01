@@ -72,14 +72,14 @@ void loadObj(char const* inputfile, std::vector<rdrVertex>& vertices, float scal
                 tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
 
                 rdrVertex vertex = {};
-                vertex.x = attrib.vertices[3.f * idx.vertex_index + 0.f] * scale;
-                vertex.y = attrib.vertices[3.f * idx.vertex_index + 1.f] * scale;
-                vertex.z = attrib.vertices[3.f * idx.vertex_index + 2.f] * scale;
-                vertex.nx = attrib.normals[3.f * idx.normal_index + 0.f];
-                vertex.ny = attrib.normals[3.f * idx.normal_index + 1.f];
-                vertex.nz = attrib.normals[3.f * idx.normal_index + 2.f];
-                vertex.u = attrib.texcoords[2.f * idx.texcoord_index + 0.f];
-                vertex.v = attrib.texcoords[2.f * idx.texcoord_index + 1.f];
+                vertex.x = attrib.vertices[3 * idx.vertex_index + 0] * scale;
+                vertex.y = attrib.vertices[3 * idx.vertex_index + 1] * scale;
+                vertex.z = attrib.vertices[3 * idx.vertex_index + 2] * scale;
+                vertex.nx = attrib.normals[3 * idx.normal_index + 0];
+                vertex.ny = attrib.normals[3 * idx.normal_index + 1];
+                vertex.nz = attrib.normals[3 * idx.normal_index + 2];
+                vertex.u = attrib.texcoords[2 * idx.texcoord_index + 0];
+                vertex.v = attrib.texcoords[2 * idx.texcoord_index + 1];
                 
                 vertex.r = 1.f;//attrib.colors[3 * idx.vertex_index + 0];
                 vertex.g = 1.f;//attrib.colors[3 * idx.vertex_index + 1];
@@ -90,7 +90,6 @@ void loadObj(char const* inputfile, std::vector<rdrVertex>& vertices, float scal
             }
             index_offset += fv;
             // per-face material
-            shapes[s].mesh.material_ids[f];
         }
     }
 }
@@ -100,19 +99,6 @@ scnImpl::scnImpl()
     loadObj("assets/Tests/ball.obj", vertices, 3.0f);
     stbi_ldr_to_hdr_gamma(1.0f);
     texture = stbi_loadf("assets/Tests/maxitest.png", &width, &height, nullptr, STBI_rgb_alpha);
-
-    printf("width = %i, height = %i\n", width, height);
-    
-    vertices = {
-        //       pos                  normal                    color                   uv
-        {-1.0f,-1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },
-        { 1.0f,-1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 0.0f },
-        { 1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 1.0f },
-
-        { 1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     1.0f, 1.0f },
-        {-1.0f, 1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 1.0f },
-        {-1.0f,-1.0f, 0.0f,      0.0f, 0.0f, 1.0f,      1.0f, 1.0f, 1.0f, 1.0f,     0.0f, 0.0f },
-    };
 
     for (int i = 0; i < 8; i++)
     {
@@ -158,19 +144,19 @@ void scnImpl::update(float deltaTime, rdrImpl* renderer)
 
     mat4x4 matrix = mat4::scale(scale);
     matrix = matrix * mat4::rotateX(rotateX) * mat4::rotateY(rotateY) * mat4::rotateZ(rotateZ);
-    matrix = matrix * mat4::translate({ 0.1f * sinf(time), 0.f, 0.f });
+    matrix = matrix * mat4::translate({ 0.1f * sinf((float)time), 0.f, 0.f });
     rdrSetModel(renderer, matrix.e);
 
     rdrDrawTriangles(renderer, vertices.data(), (int)vertices.size());
 
-    matrix = matrix * mat4::translate({ 3.f, 2.f * cosf(time), -0.5f }) * mat4::scale(1.2f);
+    matrix = matrix * mat4::translate({ 3.f, 2.f * cosf((float)time), -0.5f }) * mat4::scale(1.2f);
     rdrSetModel(renderer, matrix.e);
 
     rdrDrawTriangles(renderer, vertices.data(), (int)vertices.size());
 
     rdrFinish(renderer);
 
-    time += deltaTime;
+    time += (double)deltaTime;
 }
 
 void scnImpl::showImGuiControls()
